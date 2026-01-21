@@ -5,7 +5,10 @@ import ChatWindow from './components/ChatWindow';
 import io from 'socket.io-client';
 import axios from 'axios';
 
-const socket = io('http://localhost:3000');
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+
+const socket = io(SOCKET_URL);
 
 function App() {
     const [chats, setChats] = useState([]);
@@ -66,7 +69,7 @@ function App() {
 
     const fetchChats = async () => {
         try {
-            const response = await axios.get('http://localhost:3000/api/chats');
+            const response = await axios.get(`${API_URL}/api/chats`);
             setChats(response.data);
             // default filter
             setConversations(response.data);
@@ -77,7 +80,7 @@ function App() {
 
     const fetchMessages = async (chatId) => {
         try {
-            const response = await axios.get(`http://localhost:3000/api/messages/${chatId}`);
+            const response = await axios.get(`${API_URL}/api/messages/${chatId}`);
             setMessages(response.data);
         } catch (error) {
             console.error("Error fetching messages:", error);
@@ -87,7 +90,7 @@ function App() {
     const handleSendMessage = async (text) => {
         if (!activeChat) return;
         try {
-            await axios.post('http://localhost:3000/api/send', {
+            await axios.post(`${API_URL}/api/send`, {
                 chatId: activeChat.id._serialized,
                 message: text
             });
