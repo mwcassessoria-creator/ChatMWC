@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Login from './components/Login';
+import SetPassword from './components/SetPassword';
 import Sidebar from './components/Sidebar';
 import ChatList from './components/ChatList';
 import ChatWindow from './components/ChatWindow';
+import AgentRegistration from './components/AgentRegistration';
+import AgentsView from './components/AgentsView';
 import io from 'socket.io-client';
 import axios from 'axios';
 
@@ -16,8 +20,24 @@ function App() {
     const [activeChat, setActiveChat] = useState(null);
     const [messages, setMessages] = useState([]);
     const [qrCode, setQrCode] = useState('');
-    const [status, setStatus] = useState('disconnected'); // connected, disconnected
+    const [status, setStatus] = useState('disconnected');
+    const [showAgentModal, setShowAgentModal] = useState(false);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [currentUser, setCurrentUser] = useState(null);
+    const [showSetPassword, setShowSetPassword] = useState(false);
+    const [pendingUser, setPendingUser] = useState(null);
+    const [currentView, setCurrentView] = useState('conversations'); // 'conversations' or 'agents'
     const activeChatRef = useRef(null);
+
+    // Check authentication on mount
+    useEffect(() => {
+        const auth = localStorage.getItem('isAuthenticated');
+        const email = localStorage.getItem('userEmail');
+        if (auth === 'true' && email) {
+            setIsAuthenticated(true);
+            setCurrentUser(email);
+        }
+    }, []);
 
     // Sync ref with state
     useEffect(() => {
@@ -60,6 +80,13 @@ function App() {
         };
     }, []);
 
+    // Listen for agent registration modal trigger
+    useEffect(() => {
+        const handleOpenModal = () => setShowAgentModal(true);
+        window.addEventListener('openAgentRegistration', handleOpenModal);
+        return () => window.removeEventListener('openAgentRegistration', handleOpenModal);
+    }, []);
+
     // Fetch chats on chat select (actually just set active and get messages)
     useEffect(() => {
         if (activeChat) {
@@ -100,37 +127,91 @@ function App() {
         }
     };
 
+    const handleLogin = (email) => {
+        setIsAuthenticated(true);
+        setCurrentUser(email);
+    };
+
+    const handleLogout = () => {
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('userEmail');
+        setIsAuthenticated(false);
+        setCurrentUser(null);
+    };
+
+    const handleFirstLogin = (email) => {
+        setPendingUser(email);
+        setShowSetPassword(true);
+    };
+
+    const handlePasswordSet = () => {
+        setShowSetPassword(false);
+        setIsAuthenticated(true);
+        setCurrentUser(pendingUser);
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('userEmail', pendingUser);
+    };
+
+    // Show set password screen for first-time users
+    if (showSetPassword && pendingUser) {
+        return <SetPassword email={pendingUser} onPasswordSet={handlePasswordSet} />;
+    }
+
+    // Show login screen if not authenticated
+    if (!isAuthenticated) {
+        return <Login onLogin={handleLogin} onFirstLogin={handleFirstLogin} />;
+    }
+
     return (
         <div className="flex h-screen bg-gray-50 font-sans">
-            <Sidebar status={status} />
-            <div className="flex flex-1 overflow-hidden">
-                <ChatList
-                    chats={conversations}
-                    activeChat={activeChat}
-                    onChatSelect={setActiveChat}
-                />
-                {activeChat ? (
-                    <ChatWindow
-                        chat={activeChat}
-                        messages={messages}
-                        onSendMessage={handleSendMessage}
+            <Sidebar
+                status={status}
+                onLogout={handleLogout}
+                onNavigate={setCurrentView}
+            />
+
+            {currentView === 'agents' ? (
+                <AgentsView />
+            ) : (
+                <div className="flex flex-1 overflow-hidden">
+                    <ChatList
+                        chats={conversations}
+                        activeChat={activeChat}
+                        onChatSelect={setActiveChat}
                     />
-                ) : (
-                    <div className="flex-1 flex items-center justify-center bg-gray-50 text-gray-400">
-                        {status === 'qr_needed' && qrCode ? (
-                            <div className="text-center">
-                                <p className="mb-4">Scan the QR Code to connect</p>
-                                {/* You would need a QR code component here, or just display raw text for now */}
-                                <div className="bg-white p-4 inline-block rounded shadow">
-                                    QR Code Ready (Check Terminal)
+                    {activeChat ? (
+                        <ChatWindow
+                            chat={activeChat}
+                            messages={messages}
+                            onSendMessage={handleSendMessage}
+                        />
+                    ) : (
+                        <div className="flex-1 flex items-center justify-center bg-gray-50 text-gray-400">
+                            {status === 'qr_needed' && qrCode ? (
+                                <div className="text-center">
+                                    <p className="mb-4">Scan the QR Code to connect</p>
+                                    {/* You would need a QR code component here, or just display raw text for now */}
+                                    <div className="bg-white p-4 inline-block rounded shadow">
+                                        QR Code Ready (Check Terminal)
+                                    </div>
                                 </div>
-                            </div>
-                        ) : (
-                            <p>Select a conversation to start chatting</p>
-                        )}
-                    </div>
-                )}
-            </div>
+                            ) : (
+                                <p>Select a conversation to start chatting</p>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {showAgentModal && (
+                <AgentRegistration
+                    onClose={() => setShowAgentModal(false)}
+                    onSuccess={() => {
+                        setShowAgentModal(false);
+                        // Optionally refresh agents list
+                    }}
+                />
+            )}
         </div>
     );
 }

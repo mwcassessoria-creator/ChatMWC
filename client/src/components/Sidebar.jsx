@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, Inbox, Wallet, LifeBuoy, ShoppingCart, Settings, User } from 'lucide-react';
+import { LayoutDashboard, Inbox, Wallet, LifeBuoy, ShoppingCart, Settings, User, LogOut, Users } from 'lucide-react';
 
-const Sidebar = ({ status }) => {
+const Sidebar = ({ status, onLogout, onNavigate }) => {
     const getStatusColor = () => {
         switch (status) {
             case 'connected': return 'bg-green-500';
@@ -37,25 +37,27 @@ const Sidebar = ({ status }) => {
                 </div>
 
                 <div className="mb-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    Departments
+                    Menu
                 </div>
 
                 <nav className="space-y-1">
-                    <NavItem icon={<Inbox size={20} />} label="Conversations" active />
-                    {/* Future placeholders */}
+                    <NavItem icon={<Inbox size={20} />} label="Conversas" onClick={() => onNavigate?.('conversations')} active />
+                    <NavItem icon={<Users size={20} />} label="Atendentes" onClick={() => onNavigate?.('agents')} />
                 </nav>
             </div>
 
             <div className="mt-auto p-6 border-t border-gray-100 space-y-1">
+                <NavItem icon={<User size={20} />} label="Cadastrar Atendente" onClick={() => window.dispatchEvent(new CustomEvent('openAgentRegistration'))} />
                 <NavItem icon={<Settings size={20} />} label="Settings" />
+                <NavItem icon={<LogOut size={20} />} label="Sair" onClick={onLogout} />
             </div>
         </div>
     );
 };
 
-const NavItem = ({ icon, label, active, count }) => {
+const NavItem = ({ icon, label, active, count, onClick }) => {
     return (
-        <div className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors ${active ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}>
+        <div onClick={onClick} className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors ${active ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}>
             <div className="flex items-center gap-3">
                 {icon}
                 <span className="font-medium">{label}</span>
