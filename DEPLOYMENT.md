@@ -1,144 +1,112 @@
-# 🚀 Deployment Guide - Vercel + Railway
+# Guia de Deploy - Chat MWC
 
-## 📋 Prerequisites
-- GitHub account (already done ✅)
-- Vercel account (free): https://vercel.com/signup
-- Railway account (free): https://railway.app
-
----
-
-## Part 1: Deploy Backend to Railway
-
-### Step 1: Create Railway Account
-1. Go to https://railway.app
-2. Click "Login with GitHub"
-3. Authorize Railway
-
-### Step 2: Deploy Backend
-1. Click "New Project"
-2. Select "Deploy from GitHub repo"
-3. Choose `mwcassessoria-creator/ChatMWC`
-4. Railway will auto-detect Node.js and start deploying
-
-### Step 3: Configure Environment Variables
-1. Go to your project → Variables tab
-2. Add these variables:
-   - `NODE_ENV` = `production`
-   - `CORS_ORIGIN` = (leave empty for now, we'll add after Vercel)
-
-### Step 4: Get Backend URL
-1. Go to Settings → Domains
-2. Click "Generate Domain"
-3. Copy the URL (e.g., `https://chatmwc-production.up.railway.app`)
-4. **Save this URL** - you'll need it for Vercel!
+## Arquitetura
+- **Frontend (React)**: Vercel
+- **Backend (Express + WhatsApp)**: Render.com
+- **Database**: Supabase
 
 ---
 
-## Part 2: Deploy Frontend to Vercel
+## 1. Deploy do Backend (Render.com)
 
-### Step 1: Create Vercel Account
-1. Go to https://vercel.com/signup
-2. Click "Continue with GitHub"
-3. Authorize Vercel
+A opção gratuita do Render é excelente, mas o servidor "dorme" após inatividade e demora uns 50 segundos para acordar no primeiro acesso.
 
-### Step 2: Import Project
-1. Click "Add New..." → "Project"
-2. Import `mwcassessoria-creator/ChatMWC`
-3. Vercel will auto-detect Vite
+### Passo 1: Criar Web Service
+1. Acesse [dashboard.render.com](https://dashboard.render.com)
+2. Clique em **New +** → **Web Service**
+3. Selecione "Build and deploy from a Git repository"
+4. Conecte sua conta do GitHub e selecione o repositório `ChatMWC`
 
-### Step 3: Configure Build Settings
-**Root Directory:** Leave as `./` (project root)
+### Passo 2: Configurações do Serviço
+Preencha os campos da seguinte forma:
 
-**Build Command:** (should auto-fill)
+- **Name**: `chat-mwc-api` (ou o nome que preferir)
+- **Region**: Selecione a mais próxima (ex: Ohio ou Frankfurt)
+- **Branch**: `main`
+- **Root Directory**: Deixe em branco (ou `.`)
+- **Runtime**: `Node`
+- **Build Command**: `npm install`
+- **Start Command**: `node server.js`
+- **Instance Type**: Free
+
+### Passo 3: Variáveis de Ambiente
+Role para baixo até encontrar a seção **Environment Variables** e adicione:
+
+| Key | Value |
+|-----|-------|
+| `PORT` | `3000` |
+| `NODE_ENV` | `production` |
+| `CORS_ORIGIN` | `https://seu-app.vercel.app` (Coloque a URL do Vercel aqui) |
+| `SUPABASE_URL` | `https://fkmyutasybvxagnxidoc.supabase.co` |
+| `SUPABASE_ANON_KEY` | `sb_publishable_6b3zkp9eqfcVToB2_fmxow_zO1xUQfr` |
+
+**Dica**: Por enquanto, em `CORS_ORIGIN`, se ainda não tiver a URL do Vercel, você pode colocar `*` para testar, mas depois atualize para a URL correta por segurança.
+
+### Passo 4: Deploy
+1. Clique em **Create Web Service**
+2. O Render iniciará o deploy. Acompanhe os logs.
+3. Quando finalizar, copie a URL gerada no topo esquerdo (ex: `https://chat-mwc-api.onrender.com`)
+
+---
+
+## 2. Deploy do Frontend (Vercel)
+
+Se você já fez o deploy no Vercel, precisa apenas atualizar as variáveis de ambiente com a nova URL do Render.
+
+### Passo 1: Atualizar Variáveis
+1. No painel do Vercel, vá em **Settings** → **Environment Variables**
+2. Edite `VITE_API_URL` e `VITE_SOCKET_URL`
+3. Coloque a nova URL do Render (sem a barra `/` no final)
+
+Exemplo:
 ```
-cd client && npm install && npm run build
+VITE_API_URL=https://chat-mwc-api.onrender.com
+VITE_SOCKET_URL=https://chat-mwc-api.onrender.com
 ```
 
-**Output Directory:**
-```
-client/dist
-```
-
-### Step 4: Add Environment Variables
-Click "Environment Variables" and add:
-
-| Name | Value |
-|------|-------|
-| `VITE_API_URL` | Your Railway URL (e.g., `https://chatmwc-production.up.railway.app`) |
-| `VITE_SOCKET_URL` | Same as above |
-
-### Step 5: Deploy
-1. Click "Deploy"
-2. Wait 1-2 minutes
-3. Copy your Vercel URL (e.g., `https://chatmwc.vercel.app`)
+### Passo 2: Redeploy
+1. Vá na aba **Deployments**
+2. Clique nos 3 pontinhos do último deploy → **Redeploy**
+3. Aguarde finalizar
 
 ---
 
-## Part 3: Update Railway CORS
+## 3. Conectar WhatsApp
 
-### Go back to Railway:
-1. Open your project → Variables
-2. Update `CORS_ORIGIN` to your Vercel URL
-3. Example: `https://chatmwc.vercel.app`
-4. Railway will auto-redeploy
+### No Render:
+1. Vá no painel do seu serviço
+2. Clique em **Logs**
+3. Quando o servidor iniciar, o QR Code do WhatsApp aparecerá nos logs (pode aparecer "quebrado" ou em formato de texto, tente copiar e colar em um visualizador de QR code se necessário, ou verifique se o terminal do Render exibe corretamente).
 
----
-
-## ✅ Verification
-
-### Test Backend
-Visit: `https://your-railway-url.up.railway.app/api/info`
-
-Should return JSON or error (means it's running)
-
-### Test Frontend
-1. Visit your Vercel URL
-2. Should see the dashboard
-3. Check browser console for connection status
+**Nota**: O WhatsApp Web JS pode ter dificuldades em ambientes sem interface gráfica como o Render Free. Se o QR Code não funcionar de primeira, pode ser necessário ajustar configurações de sessão, mas para teste inicial deve bastar.
 
 ---
 
-## 📱 WhatsApp Connection
+## 4. Configurar Supabase (Se ainda não fez)
 
-**Important:** Railway will show logs with the QR code!
-
-1. Go to Railway → Your Project → Deployments
-2. Click latest deployment → View Logs
-3. Look for the QR code in ASCII art
-4. Scan with WhatsApp (Phone → Settings → Linked Devices)
-
----
-
-## 🔧 Troubleshooting
-
-### Frontend shows "Connection Refused"
-- Check if Railway backend is running (green status)
-- Verify `VITE_API_URL` in Vercel matches Railway URL exactly
-- Redeploy Vercel after changing env vars
-
-### CORS Error
-- Update `CORS_ORIGIN` in Railway to match Vercel URL
-- Make sure there's no trailing slash
-
-### WhatsApp not connecting
-- Check Railway logs for errors
-- QR code expires after 60 seconds - refresh logs for new one
-- Make sure Railway deployment is not sleeping (free tier sleeps after inactivity)
+Execute os SQLs no Supabase SQL Editor se ainda não tiver feito:
+1. `supabase-schema.sql`
+2. `supabase-agents-migration.sql`
+3. `supabase-password-migration.sql`
+4. `supabase-assignments-migration.sql`
 
 ---
 
-## 💰 Cost
+## Troubleshooting
 
-Both platforms are **FREE** for this project:
-- **Vercel:** Unlimited bandwidth, 100GB storage
-- **Railway:** $5 free credit/month (enough for 24/7 uptime)
+### Tela Branca no Vercel
+Verifique se as variáveis `VITE_API_URL` e `VITE_SOCKET_URL` no Vercel correspondem exatamente à URL do Render.
+
+### Erro de CORS
+Verifique se a variável `CORS_ORIGIN` no Render corresponde exatamente à URL do seu site no Vercel.
+
+### Servidor Lento
+No plano gratuito do Render, o primeiro acesso após 15 minutos de inatividade demora cerca de 50 segundos. Tenha paciência no primeiro load.
 
 ---
 
-## 🎉 Next Steps
+## Credenciais
 
-After deployment:
-1. Share your Vercel URL with your team
-2. Keep Railway running for WhatsApp connection
-3. Monitor Railway logs for WhatsApp activity
-4. Consider upgrading Railway if you need guaranteed uptime
+### Super Admin
+- **Email**: mwc.assessoria@gmail.com
+- **Senha**: Mwc2015

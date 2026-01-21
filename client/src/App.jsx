@@ -12,9 +12,8 @@ import axios from 'axios';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 
-const socket = io(SOCKET_URL);
-
 function App() {
+    const [socket, setSocket] = useState(null);
     const [chats, setChats] = useState([]);
     const [conversations, setConversations] = useState([]); // Filtered chats
     const [activeChat, setActiveChat] = useState(null);
@@ -44,41 +43,50 @@ function App() {
         activeChatRef.current = activeChat;
     }, [activeChat]);
 
-    // Initial Data Fetch & Socket Listeners
+    // Initialize socket only when authenticated
     useEffect(() => {
-        fetchChats();
+        if (isAuthenticated && !socket) {
+            const newSocket = io(SOCKET_URL);
+            setSocket(newSocket);
 
-        socket.on('connect', () => {
-            console.log('Socket connected');
-        });
+            newSocket.on('connect', () => {
+                console.log('Socket connected');
+            });
 
-        socket.on('qr', (qr) => {
-            setQrCode(qr);
-            setStatus('qr_needed');
-        });
+            newSocket.on('qr', (qr) => {
+                setQrCode(qr);
+                setStatus('qr_needed');
+            });
 
-        socket.on('ready', () => {
-            setStatus('connected');
+            newSocket.on('ready', () => {
+                setStatus('connected');
+                fetchChats();
+            });
+
+            // Real-time message listener
+            newSocket.on('message', (msg) => {
+                if (activeChatRef.current && (msg.from === activeChatRef.current.id._serialized || msg.to === activeChatRef.current.id._serialized)) {
+                    setMessages(prev => [...prev, msg]);
+                }
+                fetchChats();
+            });
+
+            return () => {
+                newSocket.off('connect');
+                newSocket.off('qr');
+                newSocket.off('ready');
+                newSocket.off('message');
+                newSocket.disconnect();
+            };
+        }
+    }, [isAuthenticated]);
+
+    // Fetch chats on mount
+    useEffect(() => {
+        if (isAuthenticated) {
             fetchChats();
-        });
-
-        // Real-time message listener
-        socket.on('message', (msg) => {
-            // If message belongs to active chat, add to messages
-            if (activeChatRef.current && (msg.from === activeChatRef.current.id._serialized || msg.to === activeChatRef.current.id._serialized)) {
-                setMessages(prev => [...prev, msg]);
-            }
-            // Always refresh chats to update last message/time
-            fetchChats();
-        });
-
-        return () => {
-            socket.off('connect');
-            socket.off('qr');
-            socket.off('ready');
-            socket.off('message');
-        };
-    }, []);
+        }
+    }, [isAuthenticated]);
 
     // Listen for agent registration modal trigger
     useEffect(() => {
