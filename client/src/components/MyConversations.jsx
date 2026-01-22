@@ -77,7 +77,7 @@ function MyConversations({ currentUser, onSelectConversation }) {
     }
 
     return (
-        <div className="flex flex-col h-full bg-gray-50">
+        <div className="w-96 flex flex-col h-full bg-gray-50 border-r border-gray-200">{/* Changed from full width to fixed 384px */}
             {/* Header */}
             <div className="bg-white border-b border-gray-200 p-4">
                 <h2 className="text-xl font-semibold text-gray-800 mb-4">Minhas Conversas</h2>
@@ -87,8 +87,8 @@ function MyConversations({ currentUser, onSelectConversation }) {
                     <button
                         onClick={() => setFilter('all')}
                         className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${filter === 'all'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                             }`}
                     >
                         Todas ({conversations.length})
@@ -96,8 +96,8 @@ function MyConversations({ currentUser, onSelectConversation }) {
                     <button
                         onClick={() => setFilter('active')}
                         className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${filter === 'active'
-                                ? 'bg-green-600 text-white'
-                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            ? 'bg-green-600 text-white'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                             }`}
                     >
                         Ativas
@@ -105,8 +105,8 @@ function MyConversations({ currentUser, onSelectConversation }) {
                     <button
                         onClick={() => setFilter('queued')}
                         className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${filter === 'queued'
-                                ? 'bg-yellow-600 text-white'
-                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            ? 'bg-yellow-600 text-white'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                             }`}
                     >
                         Na Fila
@@ -118,8 +118,8 @@ function MyConversations({ currentUser, onSelectConversation }) {
                     <button
                         onClick={() => setSortBy('recent')}
                         className={`px-3 py-1 rounded text-sm ${sortBy === 'recent'
-                                ? 'bg-blue-100 text-blue-700'
-                                : 'text-gray-600 hover:bg-gray-100'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'text-gray-600 hover:bg-gray-100'
                             }`}
                     >
                         Mais Recentes
@@ -127,8 +127,8 @@ function MyConversations({ currentUser, onSelectConversation }) {
                     <button
                         onClick={() => setSortBy('priority')}
                         className={`px-3 py-1 rounded text-sm ${sortBy === 'priority'
-                                ? 'bg-blue-100 text-blue-700'
-                                : 'text-gray-600 hover:bg-gray-100'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'text-gray-600 hover:bg-gray-100'
                             }`}
                     >
                         Prioridade

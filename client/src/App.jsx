@@ -188,13 +188,26 @@ function App() {
             {currentView === 'agents' ? (
                 <AgentsView />
             ) : currentView === 'my-conversations' ? (
-                <MyConversations
-                    currentUser={currentUser}
-                    onSelectConversation={(chatId) => {
-                        const chat = chats.find(c => c.id._serialized === chatId);
-                        if (chat) setActiveChat(chat);
-                    }}
-                />
+                <div className="flex flex-1 overflow-hidden">
+                    <MyConversations
+                        currentUser={currentUser}
+                        onSelectConversation={(chatId) => {
+                            const chat = chats.find(c => c.id._serialized === chatId);
+                            if (chat) setActiveChat(chat);
+                        }}
+                    />
+                    {activeChat ? (
+                        <ChatWindow
+                            chat={activeChat}
+                            messages={messages}
+                            onSendMessage={handleSendMessage}
+                        />
+                    ) : (
+                        <div className="flex-1 flex items-center justify-center bg-gray-50 text-gray-400">
+                            <p>Selecione uma conversa para iniciar o atendimento</p>
+                        </div>
+                    )}
+                </div>
             ) : currentView === 'departments' ? (
                 <DepartmentView currentUser={currentUser} />
             ) : currentView === 'all-conversations' ? (
