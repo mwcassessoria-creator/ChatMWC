@@ -68,10 +68,12 @@ function MyConversations({ currentUser, onSelectConversation }) {
         return `${days}d`;
     };
 
-    if (loading) {
+    if (loading || !currentUser) {
         return (
             <div className="flex items-center justify-center h-full">
-                <div className="text-gray-500">Carregando conversas...</div>
+                <div className="text-gray-500">
+                    {!currentUser ? 'Inicializando...' : 'Carregando conversas...'}
+                </div>
             </div>
         );
     }

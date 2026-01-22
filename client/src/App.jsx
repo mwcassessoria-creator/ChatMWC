@@ -148,8 +148,11 @@ function App() {
     };
 
     const handleLogin = (email) => {
-        setIsAuthenticated(true);
+        // Persist immediately to avoid race conditions/white screen
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('userEmail', email);
         setCurrentUser(email);
+        setIsAuthenticated(true);
     };
 
     const handleLogout = () => {
