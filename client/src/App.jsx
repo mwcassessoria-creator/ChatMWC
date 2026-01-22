@@ -32,7 +32,7 @@ function App() {
     const [currentUser, setCurrentUser] = useState(null);
     const [showSetPassword, setShowSetPassword] = useState(false);
     const [pendingUser, setPendingUser] = useState(null);
-    const [currentView, setCurrentView] = useState('conversations'); // 'conversations', 'my-conversations', 'departments', 'all-conversations', 'agents'
+    const [currentView, setCurrentView] = useState('my-conversations'); // 'conversations', 'my-conversations', 'departments', 'all-conversations', 'agents'
     const activeChatRef = useRef(null);
 
     // Check authentication on mount
