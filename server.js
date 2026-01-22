@@ -614,15 +614,24 @@ app.post('/api/conversations/:id/transfer', async (req, res) => {
     }
 });
 
-// Update conversation details (name, company)
+// Update conversation details (name, company, phone)
 app.put('/api/conversations/:id/details', async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, company } = req.body;
+        const { name, company, phone } = req.body;
+
+        const updates = { name, company };
+
+        if (phone) {
+            // Sanitize phone (keep only digits)
+            const cleanPhone = phone.replace(/\D/g, '');
+            updates.phone = cleanPhone;
+            updates.chat_id = `${cleanPhone}@c.us`;
+        }
 
         const { data, error } = await supabase
             .from('conversations')
-            .update({ name, company })
+            .update(updates)
             .eq('id', id)
             .select()
             .single();

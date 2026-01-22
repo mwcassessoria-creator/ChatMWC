@@ -12,6 +12,7 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onClose }) => 
     const [isEditingDetails, setIsEditingDetails] = useState(false);
     const [editedName, setEditedName] = useState('');
     const [editedCompany, setEditedCompany] = useState('');
+    const [editedPhone, setEditedPhone] = useState('');
     const messagesEndRef = useRef(null);
 
     const scrollToBottom = () => {
@@ -26,6 +27,11 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onClose }) => 
         if (chat) {
             setEditedName(chat.name || '');
             setEditedCompany(chat.company || ''); // Ensure chat object has company if available
+
+            // Extract phone from ID
+            const phone = typeof chat.id === 'string' ? chat.id.split('@')[0] : chat.id?.user?.split('@')[0] || '';
+            setEditedPhone(phone);
+
             setIsEditingDetails(false);
         }
     }, [chat]);
@@ -104,12 +110,22 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onClose }) => 
         try {
             await axios.put(`${API_URL}/api/conversations/${chat.conversationId}/details`, {
                 name: editedName,
-                company: editedCompany
+                company: editedCompany,
+                phone: editedPhone
             });
 
-            // Update local chat object reference if possible, or trigger refresh
+            // Update local chat object reference
             chat.name = editedName;
             chat.company = editedCompany;
+
+            if (editedPhone) {
+                const cleanPhone = editedPhone.replace(/\D/g, '');
+                if (typeof chat.id === 'object') {
+                    chat.id = { ...chat.id, _serialized: `${cleanPhone}@c.us`, user: cleanPhone };
+                } else {
+                    chat.id = `${cleanPhone}@c.us`;
+                }
+            }
 
             setIsEditingDetails(false);
             alert('Dados atualizados!');
@@ -147,9 +163,10 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onClose }) => 
                                     <label className="block text-xs font-semibold text-gray-500 mb-1">Telefone</label>
                                     <input
                                         type="text"
-                                        value={typeof chat.id === 'string' ? chat.id.split('@')[0] : chat.id?.user?.split('@')[0] || ''}
-                                        disabled
-                                        className="w-full border border-gray-200 bg-gray-50 text-gray-500 rounded-lg px-3 py-2 text-sm cursor-not-allowed"
+                                        value={editedPhone}
+                                        onChange={(e) => setEditedPhone(e.target.value)}
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                        placeholder="5599..."
                                     />
                                 </div>
 
