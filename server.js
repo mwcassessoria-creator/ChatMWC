@@ -31,7 +31,10 @@ app.use(express.json());
 // WHATSAPP CLIENT
 // =====================================
 const client = new Client({
-    authStrategy: new LocalAuth(),
+    authStrategy: new LocalAuth({
+        clientId: "client-one",
+        dataPath: "./.wwebjs_auth"
+    }),
     puppeteer: {
         headless: true,
         args: [
@@ -41,7 +44,6 @@ const client = new Client({
             "--disable-accelerated-2d-canvas",
             "--no-first-run",
             "--no-zygote",
-            "--single-process",
             "--disable-gpu"
         ],
     },
