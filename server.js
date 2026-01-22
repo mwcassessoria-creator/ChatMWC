@@ -17,13 +17,39 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: process.env.CORS_ORIGIN || "http://localhost:5173",
-        methods: ["GET", "POST"]
+        origin: (origin, callback) => {
+            const allowedOrigins = [
+                "http://localhost:5173",
+                "http://localhost:5174",
+                "http://localhost:3000",
+                process.env.CORS_ORIGIN
+            ];
+            if (!origin || allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                callback(null, true); // Permissive for now to avoid blocking
+            }
+        },
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        credentials: true
     }
 });
 
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:5173"
+    origin: (origin, callback) => {
+        const allowedOrigins = [
+            "http://localhost:5173",
+            "http://localhost:5174",
+            "http://localhost:3000",
+            process.env.CORS_ORIGIN
+        ];
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(null, true); // Permissive for now
+        }
+    },
+    credentials: true
 }));
 app.use(express.json());
 
