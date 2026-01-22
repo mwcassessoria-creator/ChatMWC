@@ -129,21 +129,59 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onClose }) => 
                     </div>
                     <div className="flex-1">
                         {isEditingDetails ? (
-                            <div className="flex flex-col gap-2 max-w-sm">
-                                <input
-                                    type="text"
-                                    value={editedName}
-                                    onChange={(e) => setEditedName(e.target.value)}
-                                    className="border border-gray-300 rounded px-2 py-1 text-sm font-bold"
-                                    placeholder="Nome do Cliente"
-                                />
-                                <input
-                                    type="text"
-                                    value={editedCompany}
-                                    onChange={(e) => setEditedCompany(e.target.value)}
-                                    className="border border-gray-300 rounded px-2 py-1 text-xs"
-                                    placeholder="Empresa"
-                                />
+                            <div className="absolute top-16 left-4 z-50 bg-white p-4 rounded-xl shadow-2xl border border-gray-200 w-80 flex flex-col gap-3 animate-in fade-in zoom-in duration-200">
+                                <h3 className="font-bold text-gray-900 border-b border-gray-100 pb-2 mb-1">Editar Dados do Cliente</h3>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 mb-1">Nome</label>
+                                    <input
+                                        type="text"
+                                        value={editedName}
+                                        onChange={(e) => setEditedName(e.target.value)}
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                        placeholder="Nome do Cliente"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 mb-1">Telefone</label>
+                                    <input
+                                        type="text"
+                                        value={chat.id.user.split('@')[0]}
+                                        disabled
+                                        className="w-full border border-gray-200 bg-gray-50 text-gray-500 rounded-lg px-3 py-2 text-sm cursor-not-allowed"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 mb-1">Empresa</label>
+                                    <div className="relative">
+                                        <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+                                        <input
+                                            type="text"
+                                            value={editedCompany}
+                                            onChange={(e) => setEditedCompany(e.target.value)}
+                                            className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                            placeholder="Nome da Empresa"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100">
+                                    <button
+                                        onClick={() => setIsEditingDetails(false)}
+                                        className="flex-1 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={handleSaveDetails}
+                                        className="flex-1 px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <Save size={16} />
+                                        Salvar
+                                    </button>
+                                </div>
                             </div>
                         ) : (
                             <div>
@@ -164,99 +202,103 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onClose }) => 
                     </div>
 
                     <button
-                        onClick={() => isEditingDetails ? handleSaveDetails() : setIsEditingDetails(true)}
-                        className={`p-2 rounded-full transition-colors ${isEditingDetails ? 'bg-green-100 text-green-600 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
-                        title={isEditingDetails ? "Salvar" : "Editar Dados"}
+                        onClick={() => setIsEditingDetails(true)}
+                        className={`p-2 rounded-full transition-colors ${isEditingDetails ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                        title="Editar Dados"
                     >
-                        {isEditingDetails ? <Save size={18} /> : <Edit2 size={18} />}
+                        <Edit2 size={18} />
                     </button>
-                    {isEditingDetails && (
-                        <button
-                            onClick={() => setIsEditingDetails(false)}
-                            className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
-                            title="Cancelar"
-                        >
-                            <XCircle size={18} />
-                        </button>
-                    )}
+                    {isEditingDetails ? <Save size={18} /> : <Edit2 size={18} />}
+                </button>
+                {isEditingDetails && (
+                    <button
+                        onClick={() => setIsEditingDetails(false)}
+                        className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                        title="Cancelar"
+                    >
+                        <XCircle size={18} />
+                    </button>
+                )}
+            </div>
+
+            <div className="flex items-center gap-3">
+                <button
+                    onClick={() => setShowTransferModal(true)}
+                    className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2 text-sm font-medium"
+                >
+                    <ArrowRightLeft size={18} />
+                    Transferir
+                </button>
+
+                <button
+                    onClick={handleCloseConversation}
+                    disabled={isClosing}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <XCircle size={18} />
+                    {isClosing ? 'Encerrando...' : 'Encerrar'}
+                </button>
+                <button className="p-2 text-gray-400 hover:text-gray-600"><MoreVertical size={20} /></button>
+            </div>
+        </div>
+
+            {/* Messages */ }
+    <div className="flex-1 overflow-y-auto p-6 bg-gray-50 space-y-4">
+        {messages.map((msg, index) => (
+            <Message
+                key={index}
+                isMe={msg.fromMe}
+                name={msg.fromMe ? "Você" : chat.name}
+                time={new Date(msg.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                text={msg.body}
+            />
+        ))}
+        <div ref={messagesEndRef} />
+    </div>
+
+    {/* Input Area */ }
+    <div className="p-6 border-t border-gray-200 bg-white">
+        <div className="border border-gray-200 rounded-xl p-4 shadow-sm focus-within:ring-2 focus-within:ring-blue-100 transition-shadow">
+            <textarea
+                placeholder="Digite uma mensagem..."
+                className="w-full resize-none text-sm focus:outline-none mb-3"
+                rows={2}
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={handleKeyDown}
+            ></textarea>
+
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4 text-gray-400">
+                    <button className="hover:text-gray-600"><Smile size={20} /></button>
+                    <button className="hover:text-gray-600"><Paperclip size={20} /></button>
                 </div>
 
                 <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-400">Pressione <b>Enter</b> para enviar</span>
                     <button
-                        onClick={() => setShowTransferModal(true)}
-                        className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2 text-sm font-medium"
+                        onClick={handleSend}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
+                        disabled={!inputText.trim()}
                     >
-                        <ArrowRightLeft size={18} />
-                        Transferir
+                        <span>Enviar</span>
+                        <Send size={16} />
                     </button>
-
-                    <button
-                        onClick={handleCloseConversation}
-                        disabled={isClosing}
-                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        <XCircle size={18} />
-                        {isClosing ? 'Encerrando...' : 'Encerrar'}
-                    </button>
-                    <button className="p-2 text-gray-400 hover:text-gray-600"><MoreVertical size={20} /></button>
                 </div>
             </div>
-
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-6 bg-gray-50 space-y-4">
-                {messages.map((msg, index) => (
-                    <Message
-                        key={index}
-                        isMe={msg.fromMe}
-                        name={msg.fromMe ? "Você" : chat.name}
-                        time={new Date(msg.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        text={msg.body}
-                    />
-                ))}
-                <div ref={messagesEndRef} />
-            </div>
-
-            {/* Input Area */}
-            <div className="p-6 border-t border-gray-200 bg-white">
-                <div className="border border-gray-200 rounded-xl p-4 shadow-sm focus-within:ring-2 focus-within:ring-blue-100 transition-shadow">
-                    <textarea
-                        placeholder="Digite uma mensagem..."
-                        className="w-full resize-none text-sm focus:outline-none mb-3"
-                        rows={2}
-                        value={inputText}
-                        onChange={(e) => setInputText(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                    ></textarea>
-
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4 text-gray-400">
-                            <button className="hover:text-gray-600"><Smile size={20} /></button>
-                            <button className="hover:text-gray-600"><Paperclip size={20} /></button>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                            <span className="text-xs text-gray-400">Pressione <b>Enter</b> para enviar</span>
-                            <button
-                                onClick={handleSend}
-                                className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
-                                disabled={!inputText.trim()}
-                            >
-                                <span>Enviar</span>
-                                <Send size={16} />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {showTransferModal && (
-                <TransferModal
-                    onClose={() => setShowTransferModal(false)}
-                    onTransfer={handleTransfer}
-                    currentAgentEmail={currentUser}
-                />
-            )}
         </div>
+    </div>
+
+    {
+        showTransferModal && (
+            <TransferModal
+                onClose={() => setShowTransferModal(false)}
+                onTransfer={handleTransfer}
+                currentAgentEmail={currentUser}
+            />
+        )
+    }
+        </div >
     );
 };
 
