@@ -201,6 +201,12 @@ function App() {
                             chat={activeChat}
                             messages={messages}
                             onSendMessage={handleSendMessage}
+                            currentUser={currentUser}
+                            onClose={() => {
+                                setActiveChat(null);
+                                // Refresh conversations list
+                                fetchChats();
+                            }}
                         />
                     ) : (
                         <div className="flex-1 flex items-center justify-center bg-gray-50 text-gray-400">

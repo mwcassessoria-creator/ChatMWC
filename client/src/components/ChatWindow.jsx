@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Phone, Video, MoreVertical, Paperclip, Smile } from 'lucide-react';
+import { Send, Phone, Video, MoreVertical, Paperclip, Smile, XCircle } from 'lucide-react';
+import axios from 'axios';
 
-const ChatWindow = ({ chat, messages, onSendMessage }) => {
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onClose }) => {
     const [inputText, setInputText] = useState('');
+    const [isClosing, setIsClosing] = useState(false);
     const messagesEndRef = useRef(null);
 
     const scrollToBottom = () => {
@@ -27,6 +31,36 @@ const ChatWindow = ({ chat, messages, onSendMessage }) => {
         }
     };
 
+    const handleCloseConversation = async () => {
+        if (!currentUser) {
+            alert('Usuário não autenticado');
+            return;
+        }
+
+        const confirmed = window.confirm('Deseja encerrar este atendimento?');
+        if (!confirmed) return;
+
+        try {
+            setIsClosing(true);
+            // Get conversation ID from chat
+            const { data: conversation } = await axios.get(`${API_URL}/api/chats`);
+            const conv = conversation.find(c => c.id._serialized === chat.id._serialized);
+
+            if (conv) {
+                await axios.post(`${API_URL}/api/conversations/${conv.id}/close`, {
+                    agentEmail: currentUser
+                });
+                alert('Atendimento encerrado com sucesso!');
+                if (onClose) onClose();
+            }
+        } catch (error) {
+            console.error('Error closing conversation:', error);
+            alert('Erro ao encerrar atendimento. Tente novamente.');
+        } finally {
+            setIsClosing(false);
+        }
+    };
+
     return (
         <div className="flex-1 flex flex-col h-screen bg-white">
             {/* Header */}
@@ -46,8 +80,14 @@ const ChatWindow = ({ chat, messages, onSendMessage }) => {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <button className="p-2 text-gray-400 hover:text-gray-600"><Phone size={20} /></button>
-                    <button className="p-2 text-gray-400 hover:text-gray-600"><Video size={20} /></button>
+                    <button
+                        onClick={handleCloseConversation}
+                        disabled={isClosing}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <XCircle size={18} />
+                        {isClosing ? 'Encerrando...' : 'Encerrar Atendimento'}
+                    </button>
                     <button className="p-2 text-gray-400 hover:text-gray-600"><MoreVertical size={20} /></button>
                 </div>
             </div>
