@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { X, UserArrowLeft, Search } from 'lucide-react';
+import { X, ArrowRightLeft, Search } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -36,7 +36,7 @@ const TransferModal = ({ onClose, onTransfer, currentAgentEmail }) => {
             <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                     <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                        <UserArrowLeft size={20} className="text-blue-600" />
+                        <ArrowRightLeft size={20} className="text-blue-600" />
                         Transferir Atendimento
                     </h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -67,8 +67,8 @@ const TransferModal = ({ onClose, onTransfer, currentAgentEmail }) => {
                                     key={agent.id}
                                     onClick={() => setSelectedAgent(agent)}
                                     className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all ${selectedAgent?.id === agent.id
-                                            ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
-                                            : 'border-gray-100 hover:bg-gray-50'
+                                        ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
+                                        : 'border-gray-100 hover:bg-gray-50'
                                         }`}
                                 >
                                     <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
