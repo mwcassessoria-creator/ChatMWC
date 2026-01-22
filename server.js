@@ -227,29 +227,28 @@ client.on("message", async (msg) => {
             }
         }
 
-        // 4. Greeting / Menu (Only if not assigned and not a valid selection)
-        if (/^(menu|oi|olá|ola|bom dia|boa tarde|boa noite|inicio|start)$/i.test(body)) {
-            await chat.sendStateTyping();
-            await new Promise(r => setTimeout(r, 1500));
+        // 4. Greeting / Menu (For ANY other message if not assigned)
+        // This enforces department selection
+        await chat.sendStateTyping();
+        await new Promise(r => setTimeout(r, 1500));
 
-            const hora = new Date().getHours();
-            let saudacao = "Olá";
-            if (hora >= 5 && hora < 12) saudacao = "Bom dia";
-            else if (hora >= 12 && hora < 18) saudacao = "Boa tarde";
-            else saudacao = "Boa noite";
+        const hora = new Date().getHours();
+        let saudacao = "Olá";
+        if (hora >= 5 && hora < 12) saudacao = "Bom dia";
+        else if (hora >= 12 && hora < 18) saudacao = "Boa tarde";
+        else saudacao = "Boa noite";
 
-            const sentMsg2 = await client.sendMessage(
-                msg.from,
-                `${saudacao}! Bem-vindo à MWC Assessoria. 👋\n` +
-                `Com qual departamento deseja falar?\n\n` +
-                `1. Fiscal\n` +
-                `2. Contábil\n` +
-                `3. DP\n` +
-                `4. Societário\n` +
-                `5. Financeiro`
-            );
-            await saveMessageToSupabase(conversation.id, sentMsg2);
-        }
+        const sentMsg2 = await client.sendMessage(
+            msg.from,
+            `${saudacao}! Bem-vindo à MWC Assessoria. 👋\n` +
+            `Para prosseguir, por favor escolha com qual departamento deseja falar:\n\n` +
+            `1. Fiscal\n` +
+            `2. Contábil\n` +
+            `3. DP\n` +
+            `4. Societário\n` +
+            `5. Financeiro`
+        );
+        await saveMessageToSupabase(conversation.id, sentMsg2);
     } catch (error) {
         console.error("Error processing message:", error);
     }
@@ -431,7 +430,7 @@ app.get('/api/conversations/my-conversations', async (req, res) => {
                 )
             `)
             .eq('agent_id', agent.id)
-            .in('status', ['active', 'queued'])
+            .in('status', ['active', 'queued', 'closed'])
             .order('assigned_at', { ascending: false });
 
         if (error) throw error;
@@ -472,7 +471,7 @@ app.get('/api/departments/:id/conversations', async (req, res) => {
                 )
             `)
             .eq('department_id', id)
-            .in('status', ['active', 'queued'])
+            .in('status', ['active', 'queued', 'closed'])
             .order('assigned_at', { ascending: false });
 
         if (error) throw error;

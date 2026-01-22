@@ -6,7 +6,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 function MyConversations({ currentUser, onSelectConversation }) {
     const [conversations, setConversations] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState('all'); // all, active, queued
+    const [filter, setFilter] = useState('active'); // active (Em andamento), queued (Pendente), closed (Resolvido), all
     const [sortBy, setSortBy] = useState('recent'); // recent, priority
 
     useEffect(() => {
@@ -85,33 +85,42 @@ function MyConversations({ currentUser, onSelectConversation }) {
                 <h2 className="text-xl font-semibold text-gray-800 mb-4">Minhas Conversas</h2>
 
                 {/* Filters */}
-                <div className="flex gap-2 mb-3">
+                <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
+                    <button
+                        onClick={() => setFilter('active')}
+                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${filter === 'active'
+                            ? 'bg-green-600 text-white'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                    >
+                        Em Andamento
+                    </button>
+                    <button
+                        onClick={() => setFilter('queued')}
+                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${filter === 'queued'
+                            ? 'bg-yellow-600 text-white'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                    >
+                        Pendente
+                    </button>
+                    <button
+                        onClick={() => setFilter('closed')}
+                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${filter === 'closed'
+                            ? 'bg-gray-600 text-white'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                    >
+                        Resolvidas
+                    </button>
                     <button
                         onClick={() => setFilter('all')}
-                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${filter === 'all'
+                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${filter === 'all'
                             ? 'bg-blue-600 text-white'
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                             }`}
                     >
                         Todas ({conversations.length})
-                    </button>
-                    <button
-                        onClick={() => setFilter('active')}
-                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${filter === 'active'
-                            ? 'bg-green-600 text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            }`}
-                    >
-                        Ativas
-                    </button>
-                    <button
-                        onClick={() => setFilter('queued')}
-                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${filter === 'queued'
-                            ? 'bg-yellow-600 text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            }`}
-                    >
-                        Na Fila
                     </button>
                 </div>
 

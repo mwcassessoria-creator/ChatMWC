@@ -92,8 +92,8 @@ function DepartmentView({ currentUser }) {
                             key={dept.id}
                             onClick={() => setSelectedDept(dept)}
                             className={`p-3 rounded-lg cursor-pointer transition-colors mb-1 ${selectedDept?.id === dept.id
-                                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                    : 'hover:bg-gray-50 text-gray-700'
+                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                : 'hover:bg-gray-50 text-gray-700'
                                 }`}
                         >
                             <div className="font-medium">{dept.name}</div>
@@ -146,6 +146,11 @@ function DepartmentView({ currentUser }) {
                                                     {conv.status === 'active' && (
                                                         <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded">
                                                             Ativo
+                                                        </span>
+                                                    )}
+                                                    {conv.status === 'closed' && (
+                                                        <span className="bg-gray-100 text-gray-800 text-xs font-medium px-2 py-0.5 rounded">
+                                                            Resolvido
                                                         </span>
                                                     )}
                                                 </div>
