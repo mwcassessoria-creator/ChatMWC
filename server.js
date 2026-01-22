@@ -275,6 +275,7 @@ app.get('/api/chats', async (req, res) => {
         // Map to wwebjs format expected by frontend
         const chats = conversations.map(c => ({
             id: { _serialized: c.chat_id },
+            conversationId: c.id,
             name: c.name,
             isGroup: c.is_group,
             unreadCount: c.unread_count,
