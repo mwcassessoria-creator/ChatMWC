@@ -52,7 +52,11 @@ function App() {
     // Initialize socket only when authenticated
     useEffect(() => {
         if (isAuthenticated && !socket) {
-            const newSocket = io(SOCKET_URL);
+            const newSocket = io(SOCKET_URL, {
+                extraHeaders: {
+                    "ngrok-skip-browser-warning": "true"
+                }
+            });
             setSocket(newSocket);
 
             newSocket.on('connect', () => {
