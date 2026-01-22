@@ -49,6 +49,43 @@ Role para baixo até encontrar a seção **Environment Variables** e adicione:
 
 ---
 
+
+## 🔄 Modo Híbrido (Desenvolvimento)
+**Frontend no Vercel -> Backend no seu PC (Localhost)**
+
+Isso permite que você teste o site oficial (Vercel) usando o backend do seu computador (para debugar o WhatsApp, por exemplo).
+
+1.  **Inicie o Backend Localmente:**
+    ```bash
+    npm start
+    ```
+
+3.  **Crie um Túnel (Ngrok):**
+    *   Crie uma conta em: [dashboard.ngrok.com/signup](https://dashboard.ngrok.com/signup)
+    *   Copie seu **Authtoken** do painel.
+    *   No terminal, rode:
+        ```bash
+        ngrok config add-authtoken <SEU_TOKEN_AQUI>
+        ```
+    *   Agora sim, inicie o túnel:
+        ```bash
+        ngrok http 3000
+        ```
+    *   Copie o link gerado (ex: `https://xyz.ngrok-free.app`).
+
+3.  **Configure no Vercel:**
+    *   Vá em **Settings -> Environment Variables**.
+    *   Mude `VITE_API_URL` para o link do Ngrok.
+    *   Mude `VITE_SOCKET_URL` para o link do Ngrok.
+    *   **Redeploy** (ou aguarde um novo deploy).
+
+4.  **Configure o Backend Local:**
+    No seu arquivo `.env` local, adicione/altere:
+    ```env
+    CORS_ORIGIN=https://seu-app.vercel.app
+    ```
+    (Substitua pelo link real do seu site no Vercel).
+
 ## 2. Deploy do Frontend (Vercel)
 
 Se você já fez o deploy no Vercel, precisa apenas atualizar as variáveis de ambiente com a nova URL do Render.
