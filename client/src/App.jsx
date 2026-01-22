@@ -13,6 +13,9 @@ import axios from 'axios';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 
+// Bypass Ngrok warning page for free-tier users
+axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true';
+
 function App() {
     const [socket, setSocket] = useState(null);
     const [chats, setChats] = useState([]);
