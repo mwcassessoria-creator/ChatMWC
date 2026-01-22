@@ -137,7 +137,8 @@ function App() {
         try {
             await axios.post(`${API_URL}/api/send`, {
                 chatId: activeChat.id._serialized,
-                message: text
+                message: text,
+                agentEmail: currentUser // Send agent email to identify sender
             });
             // Optimistic update or wait for socket event
         } catch (error) {

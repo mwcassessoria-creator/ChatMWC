@@ -336,9 +336,24 @@ app.get('/api/messages/:chatId', async (req, res) => {
 
 // Send a message
 app.post('/api/send', async (req, res) => {
-    const { chatId, message } = req.body;
+    const { chatId, message, agentEmail } = req.body;
     try {
-        const response = await client.sendMessage(chatId, message);
+        let messageToSend = message;
+
+        // If agent email is provided, try to find the name and prepend it
+        if (agentEmail) {
+            const { data: agent } = await supabase
+                .from('agents')
+                .select('name')
+                .eq('email', agentEmail)
+                .single();
+            
+            if (agent && agent.name) {
+                messageToSend = `*${agent.name}:* ${message}`;
+            }
+        }
+
+        const response = await client.sendMessage(chatId, messageToSend);
 
         // Save sent message to Supabase
         const { data: conversation } = await supabase
