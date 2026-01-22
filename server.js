@@ -801,6 +801,7 @@ app.get('/api/agents', async (req, res) => {
 
 // Get agents with statistics
 app.get('/api/agents/stats', async (req, res) => {
+    console.log('[API] GET /api/agents/stats called');
     try {
         const { data: agents, error } = await supabase
             .from('agents')
@@ -814,7 +815,12 @@ app.get('/api/agents/stats', async (req, res) => {
                 )
             `);
 
-        if (error) throw error;
+        if (error) {
+            console.error('[API] Supabase error fetching agents:', error);
+            throw error;
+        }
+
+        console.log(`[API] Found ${agents?.length} agents in DB`);
 
         // Get conversation counts for each agent
         const agentsWithStats = await Promise.all(agents.map(async (agent) => {
@@ -833,15 +839,16 @@ app.get('/api/agents/stats', async (req, res) => {
 
             return {
                 ...agent,
-                departments: agent.agent_departments?.map(ad => ad.departments) || [],
+                departments: agent.agent_departments?.map(ad => ad.departments).filter(Boolean) || [],
                 total_conversations: totalCount || 0,
                 active_conversations: activeCount || 0
             };
         }));
 
+        console.log('[API] Sending agents stats:', JSON.stringify(agentsWithStats.map(a => a.name)));
         res.json(agentsWithStats);
     } catch (error) {
-        console.error('Error fetching agent stats:', error);
+        console.error('[API] Error in /api/agents/stats:', error);
         res.status(500).json({ error: error.message });
     }
 });

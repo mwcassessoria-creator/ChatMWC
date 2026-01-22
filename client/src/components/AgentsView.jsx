@@ -19,9 +19,14 @@ const AgentsView = () => {
     const fetchAgents = async () => {
         try {
             const response = await axios.get(`${API_URL}/api/agents/stats`);
+            console.log('Agents received:', response.data);
             setAgents(response.data);
+            if (response.data.length === 0) {
+                console.warn('API returned 0 agents');
+            }
         } catch (error) {
             console.error('Error fetching agents:', error);
+            alert(`Erro ao carregar atendentes: ${error.response?.data?.error || error.message}`);
         } finally {
             setLoading(false);
         }
