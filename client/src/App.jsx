@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import Login from './components/Login';
 import SetPassword from './components/SetPassword';
 import Sidebar from './components/Sidebar';
@@ -200,7 +201,7 @@ function App() {
                                     <p className="mb-4">Scan the QR Code to connect</p>
                                     {/* You would need a QR code component here, or just display raw text for now */}
                                     <div className="bg-white p-4 inline-block rounded shadow">
-                                        QR Code Ready (Check Terminal)
+                                        <QRCodeSVG value={qrCode} size={256} />
                                     </div>
                                 </div>
                             ) : (
