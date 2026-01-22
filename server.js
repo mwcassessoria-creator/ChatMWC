@@ -692,7 +692,14 @@ app.get('/api/agents', async (req, res) => {
             `);
 
         if (error) throw error;
-        res.json(agents);
+
+        // Flatten departments structure
+        const formattedAgents = agents.map(agent => ({
+            ...agent,
+            departments: agent.agent_departments?.map(ad => ad.departments).filter(Boolean) || []
+        }));
+
+        res.json(formattedAgents);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
