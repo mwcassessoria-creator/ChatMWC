@@ -693,11 +693,17 @@ app.get('/api/agents', async (req, res) => {
 
         if (error) throw error;
 
+        // DEBUG: Log raw data
+        console.log("Raw agents data:", JSON.stringify(agents, null, 2));
+
         // Flatten departments structure
         const formattedAgents = agents.map(agent => ({
             ...agent,
             departments: agent.agent_departments?.map(ad => ad.departments).filter(Boolean) || []
         }));
+
+        // DEBUG: Log formatted data
+        console.log("Formatted agents:", JSON.stringify(formattedAgents, null, 2));
 
         res.json(formattedAgents);
     } catch (error) {

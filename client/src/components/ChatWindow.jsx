@@ -74,7 +74,15 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onClose }) => 
     };
 
     const handleTransfer = async (targetAgentId) => {
-        if (!currentUser || !chat.conversationId) return;
+        if (!currentUser) {
+            alert("Erro: Usuário não autenticado.");
+            return;
+        }
+        if (!chat.conversationId) {
+            alert("Erro: ID da conversa não encontrado. Tente recarregar a página.");
+            console.error("Missing conversationId for chat:", chat);
+            return;
+        }
 
         try {
             await axios.post(`${API_URL}/api/conversations/${chat.conversationId}/transfer`, {
