@@ -117,6 +117,50 @@ async function findAvailableAgent(departmentId) {
     return null;
 }
 
+// Helper to save message to Supabase
+async function saveMessageToSupabase(conversationId, msg) {
+    try {
+        const timestamp = new Date(msg.timestamp * 1000).toISOString();
+
+        const { error } = await supabase
+            .from('messages')
+            .upsert({
+                conversation_id: conversationId,
+                message_id: msg.id._serialized,
+                from_me: msg.fromMe,
+                body: msg.body,
+                timestamp: timestamp,
+                has_media: msg.hasMedia,
+                media_type: msg.type
+            }, { onConflict: 'message_id' });
+
+        if (error) {
+            console.error("Error saving message:", error);
+        } else {
+            // Update conversation timestamp
+            await supabase
+                .from('conversations')
+                .update({ last_message_at: timestamp })
+                .eq('id', conversationId);
+
+            // Emit to frontend for real-time update
+            const socketPayload = {
+                id: { _serialized: msg.id._serialized },
+                fromMe: msg.fromMe,
+                body: msg.body,
+                timestamp: msg.timestamp,
+                hasMedia: msg.hasMedia,
+                type: msg.type,
+                from: msg.from || (msg.fromMe ? 'me' : null),
+                to: msg.to
+            };
+            io.emit('message', socketPayload);
+        }
+    } catch (err) {
+        console.error("Error saving message to Supabase:", err);
+    }
+}
+
 client.on("message", async (msg) => {
     try {
         if (!msg.from || msg.from.endsWith("@g.us")) return;
@@ -137,6 +181,9 @@ client.on("message", async (msg) => {
             .single();
 
         if (!conversation) return;
+
+        // Save incoming message to Supabase
+        await saveMessageToSupabase(conversation.id, msg);
 
         // 2. Check if already assigned (Human agent handling it)
         const isAssigned = await hasActiveAssignment(conversation.id);
@@ -174,7 +221,8 @@ client.on("message", async (msg) => {
                     replyMsg += `\n\nUm de nossos especialistas falará com você em breve.`;
                 }
 
-                await client.sendMessage(msg.from, replyMsg);
+                const sentMsg1 = await client.sendMessage(msg.from, replyMsg);
+                await saveMessageToSupabase(conversation.id, sentMsg1);
                 return;
             }
         }
@@ -190,7 +238,7 @@ client.on("message", async (msg) => {
             else if (hora >= 12 && hora < 18) saudacao = "Boa tarde";
             else saudacao = "Boa noite";
 
-            await client.sendMessage(
+            const sentMsg2 = await client.sendMessage(
                 msg.from,
                 `${saudacao}! Bem-vindo à MWC Assessoria. 👋\n` +
                 `Com qual departamento deseja falar?\n\n` +
@@ -200,6 +248,7 @@ client.on("message", async (msg) => {
                 `4. Societário\n` +
                 `5. Financeiro`
             );
+            await saveMessageToSupabase(conversation.id, sentMsg2);
         }
     } catch (error) {
         console.error("Error processing message:", error);
@@ -215,9 +264,26 @@ client.initialize();
 // Get all chats
 app.get('/api/chats', async (req, res) => {
     try {
-        const chats = await client.getChats();
+        // Fetch from Supabase to support persistence/offline
+        const { data: conversations, error } = await supabase
+            .from('conversations')
+            .select('*')
+            .order('last_message_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Map to wwebjs format expected by frontend
+        const chats = conversations.map(c => ({
+            id: { _serialized: c.chat_id },
+            name: c.name,
+            isGroup: c.is_group,
+            unreadCount: c.unread_count,
+            timestamp: c.last_message_at ? new Date(c.last_message_at).getTime() / 1000 : 0
+        }));
+
         res.json(chats);
     } catch (error) {
+        console.error("Error fetching chats:", error);
         res.status(500).json({ error: 'Failed to fetch chats' });
     }
 });
@@ -225,11 +291,45 @@ app.get('/api/chats', async (req, res) => {
 // Get messages for a specific chat
 app.get('/api/messages/:chatId', async (req, res) => {
     try {
+        // 1. Try to get conversation from Supabase
+        const { data: conversation } = await supabase
+            .from('conversations')
+            .select('id')
+            .eq('chat_id', req.params.chatId)
+            .single();
+
+        if (conversation) {
+            // 2. Fetch messages from Supabase
+            const { data: messages } = await supabase
+                .from('messages')
+                .select('*')
+                .eq('conversation_id', conversation.id)
+                .order('timestamp', { ascending: true })
+                .limit(parseInt(req.query.limit) || 50);
+
+            if (messages && messages.length > 0) {
+                const mappedMessages = messages.map(m => ({
+                    id: { _serialized: m.message_id },
+                    fromMe: m.from_me,
+                    body: m.body,
+                    timestamp: new Date(m.timestamp).getTime() / 1000,
+                    hasMedia: m.has_media,
+                    type: m.media_type,
+                    from: m.from_me ? (client.info ? client.info.wid._serialized : 'me') : req.params.chatId,
+                    to: m.from_me ? req.params.chatId : (client.info ? client.info.wid._serialized : 'me')
+                }));
+                return res.json(mappedMessages);
+            }
+        }
+
+        // Fallback: fetch from WhatsApp Web.js
         const chat = await client.getChatById(req.params.chatId);
         const limit = parseInt(req.query.limit) || 50;
         const messages = await chat.fetchMessages({ limit });
         res.json(messages);
+
     } catch (error) {
+        console.error("Error fetching messages:", error);
         res.status(500).json({ error: 'Failed to fetch messages' });
     }
 });
@@ -239,6 +339,18 @@ app.post('/api/send', async (req, res) => {
     const { chatId, message } = req.body;
     try {
         const response = await client.sendMessage(chatId, message);
+
+        // Save sent message to Supabase
+        const { data: conversation } = await supabase
+            .from('conversations')
+            .select('id')
+            .eq('chat_id', chatId)
+            .single();
+
+        if (conversation) {
+            await saveMessageToSupabase(conversation.id, response);
+        }
+
         res.json(response);
     } catch (error) {
         console.error(error);
