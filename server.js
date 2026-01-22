@@ -675,6 +675,34 @@ app.post('/api/agents', async (req, res) => {
     }
 });
 
+// Delete agent
+app.delete('/api/agents/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        // 1. Delete associations in agent_departments
+        const { error: deptError } = await supabase
+            .from('agent_departments')
+            .delete()
+            .eq('agent_id', id);
+
+        if (deptError) throw deptError;
+
+        // 2. Delete the agent
+        const { error: agentError } = await supabase
+            .from('agents')
+            .delete()
+            .eq('id', id);
+
+        if (agentError) throw agentError;
+
+        res.json({ message: 'Agent deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting agent:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Get all agents with their departments
 app.get('/api/agents', async (req, res) => {
     try {

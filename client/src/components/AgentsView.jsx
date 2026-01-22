@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, MessageSquare, Clock, TrendingUp, Search, Filter } from 'lucide-react';
+import { Users, MessageSquare, Clock, TrendingUp, Search, Filter, Trash2 } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -22,6 +22,20 @@ const AgentsView = () => {
             console.error('Error fetching agents:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDeleteAgent = async (id, name, e) => {
+        e.stopPropagation(); // Prevent opening modal
+        if (window.confirm(`Tem certeza que deseja excluir o atendente "${name}"? Esta ação não pode ser desfeita.`)) {
+            try {
+                await axios.delete(`${API_URL}/api/agents/${id}`);
+                // Refresh list
+                setAgents(prev => prev.filter(a => a.id !== id));
+            } catch (error) {
+                console.error("Error deleting agent:", error);
+                alert("Erro ao excluir atendente. Tente novamente.");
+            }
         }
     };
 
@@ -77,7 +91,7 @@ const AgentsView = () => {
                     {filteredAgents.map(agent => (
                         <div
                             key={agent.id}
-                            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+                            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer group"
                             onClick={() => setSelectedAgent(agent)}
                         >
                             {/* Agent Header */}
@@ -91,9 +105,18 @@ const AgentsView = () => {
                                         <p className="text-sm text-gray-500">{agent.email}</p>
                                     </div>
                                 </div>
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(agent.status)}`}>
-                                    {agent.status === 'active' ? 'Ativo' : agent.status === 'busy' ? 'Ocupado' : 'Inativo'}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(agent.status)}`}>
+                                        {agent.status === 'active' ? 'Ativo' : agent.status === 'busy' ? 'Ocupado' : 'Inativo'}
+                                    </span>
+                                    <button
+                                        onClick={(e) => handleDeleteAgent(agent.id, agent.name, e)}
+                                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                        title="Excluir Atendente"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Departments */}
