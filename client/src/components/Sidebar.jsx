@@ -1,7 +1,7 @@
 import React from 'react';
 import { LayoutDashboard, Inbox, Wallet, LifeBuoy, ShoppingCart, Settings, User, LogOut, Users } from 'lucide-react';
 
-const Sidebar = ({ status, onLogout, onNavigate }) => {
+const Sidebar = ({ status, onLogout, onNavigate, currentView }) => {
     const getStatusColor = () => {
         switch (status) {
             case 'connected': return 'bg-green-500';
@@ -43,24 +43,27 @@ const Sidebar = ({ status, onLogout, onNavigate }) => {
                 <nav className="space-y-1">
                     <NavItem
                         icon={<Inbox size={20} />}
+                        label="Todas Conversas"
+                        onClick={() => onNavigate?.('conversations')}
+                        active={currentView === 'conversations'}
+                    />
+                    <NavItem
+                        icon={<Inbox size={20} />}
                         label="Minhas Conversas"
                         onClick={() => onNavigate?.('my-conversations')}
-                        active={true}
+                        active={currentView === 'my-conversations'}
                     />
                     <NavItem
                         icon={<LayoutDashboard size={20} />}
                         label="Departamentos"
                         onClick={() => onNavigate?.('departments')}
-                    />
-                    <NavItem
-                        icon={<Wallet size={20} />}
-                        label="Todas Conversas"
-                        onClick={() => onNavigate?.('all-conversations')}
+                        active={currentView === 'departments'}
                     />
                     <NavItem
                         icon={<Users size={20} />}
                         label="Atendentes"
                         onClick={() => onNavigate?.('agents')}
+                        active={currentView === 'agents'}
                     />
                 </nav>
             </div>
