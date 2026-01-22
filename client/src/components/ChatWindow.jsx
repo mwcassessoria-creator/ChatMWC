@@ -147,7 +147,7 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onClose }) => 
                                     <label className="block text-xs font-semibold text-gray-500 mb-1">Telefone</label>
                                     <input
                                         type="text"
-                                        value={chat.id.user.split('@')[0]}
+                                        value={typeof chat.id === 'string' ? chat.id.split('@')[0] : chat.id?.user?.split('@')[0] || ''}
                                         disabled
                                         className="w-full border border-gray-200 bg-gray-50 text-gray-500 rounded-lg px-3 py-2 text-sm cursor-not-allowed"
                                     />
