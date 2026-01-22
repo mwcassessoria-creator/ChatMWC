@@ -41,8 +41,27 @@ const Sidebar = ({ status, onLogout, onNavigate }) => {
                 </div>
 
                 <nav className="space-y-1">
-                    <NavItem icon={<Inbox size={20} />} label="Conversas" onClick={() => onNavigate?.('conversations')} active />
-                    <NavItem icon={<Users size={20} />} label="Atendentes" onClick={() => onNavigate?.('agents')} />
+                    <NavItem
+                        icon={<Inbox size={20} />}
+                        label="Minhas Conversas"
+                        onClick={() => onNavigate?.('my-conversations')}
+                        active={true}
+                    />
+                    <NavItem
+                        icon={<LayoutDashboard size={20} />}
+                        label="Departamentos"
+                        onClick={() => onNavigate?.('departments')}
+                    />
+                    <NavItem
+                        icon={<Wallet size={20} />}
+                        label="Todas Conversas"
+                        onClick={() => onNavigate?.('all-conversations')}
+                    />
+                    <NavItem
+                        icon={<Users size={20} />}
+                        label="Atendentes"
+                        onClick={() => onNavigate?.('agents')}
+                    />
                 </nav>
             </div>
 

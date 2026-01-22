@@ -7,6 +7,8 @@ import ChatList from './components/ChatList';
 import ChatWindow from './components/ChatWindow';
 import AgentRegistration from './components/AgentRegistration';
 import AgentsView from './components/AgentsView';
+import MyConversations from './components/MyConversations';
+import DepartmentView from './components/DepartmentView';
 import io from 'socket.io-client';
 import axios from 'axios';
 
@@ -29,7 +31,7 @@ function App() {
     const [currentUser, setCurrentUser] = useState(null);
     const [showSetPassword, setShowSetPassword] = useState(false);
     const [pendingUser, setPendingUser] = useState(null);
-    const [currentView, setCurrentView] = useState('conversations'); // 'conversations' or 'agents'
+    const [currentView, setCurrentView] = useState('my-conversations'); // 'my-conversations', 'departments', 'all-conversations', 'agents'
     const activeChatRef = useRef(null);
 
     // Check authentication on mount
@@ -184,6 +186,23 @@ function App() {
 
             {currentView === 'agents' ? (
                 <AgentsView />
+            ) : currentView === 'my-conversations' ? (
+                <MyConversations
+                    currentUser={currentUser}
+                    onSelectConversation={(chatId) => {
+                        const chat = chats.find(c => c.id._serialized === chatId);
+                        if (chat) setActiveChat(chat);
+                    }}
+                />
+            ) : currentView === 'departments' ? (
+                <DepartmentView currentUser={currentUser} />
+            ) : currentView === 'all-conversations' ? (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                    <div className="text-center">
+                        <p className="text-xl mb-2">🚧 Em Desenvolvimento</p>
+                        <p>Visão de todas as conversas (Admin)</p>
+                    </div>
+                </div>
             ) : (
                 <div className="flex flex-1 overflow-hidden">
                     <ChatList

@@ -17,39 +17,14 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: (origin, callback) => {
-            const allowedOrigins = [
-                "http://localhost:5173",
-                "http://localhost:5174",
-                "http://localhost:3000",
-                process.env.CORS_ORIGIN
-            ];
-            if (!origin || allowedOrigins.includes(origin)) {
-                callback(null, true);
-            } else {
-                callback(null, true); // Permissive for now to avoid blocking
-            }
-        },
+        origin: "*", // Temporarily allow all for debugging
         methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         credentials: true
     }
 });
 
 app.use(cors({
-    origin: (origin, callback) => {
-        const allowedOrigins = [
-            "http://localhost:5173",
-            "http://localhost:5174",
-            "http://localhost:3000",
-            process.env.CORS_ORIGIN
-        ];
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(null, true); // Permissive for now
-        }
-    },
-    credentials: true
+    origin: "*" // Temporarily allow all for debugging
 }));
 app.use(express.json());
 
@@ -83,23 +58,72 @@ client.on("qr", (qr) => {
 });
 
 // Ready
-client.on("ready", () => {
+// Global cache for departments
+let departmentsCache = {};
+
+client.on("ready", async () => {
     console.log("✅ Tudo certo! WhatsApp conectado.");
     io.emit('ready');
-});
 
-// Disconnected
-client.on("disconnected", (reason) => {
-    console.log("⚠️ Desconectado:", reason);
-    io.emit('disconnected', reason);
-});
-
-// Message Handling - Save to Supabase
-client.on("message_create", async (msg) => {
+    // Load departments
     try {
-        const chat = await msg.getChat();
+        const { data: depts, error } = await supabase
+            .from('departments')
+            .select('id, name');
 
-        // Save/update conversation
+        if (depts) {
+            depts.forEach(d => {
+                departmentsCache[d.name] = d.id;
+            });
+            console.log("📂 Departamentos carregados:", Object.keys(departmentsCache));
+        }
+    } catch (err) {
+        console.error("Erro ao carregar departamentos:", err);
+    }
+});
+
+// ... (disconnected handler remains same)
+
+// Helper to check for active assignment
+async function hasActiveAssignment(conversationId) {
+    const { data } = await supabase
+        .from('conversation_assignments')
+        .select('id')
+        .eq('conversation_id', conversationId)
+        .eq('status', 'active')
+        .single();
+    return !!data;
+}
+
+// Helper to find available agent (simplified round-robin or random for now)
+async function findAvailableAgent(departmentId) {
+    // Find agents in this department who are active
+    const { data: agents } = await supabase
+        .from('agents')
+        .select(`
+            id,
+            agent_departments!inner (
+                department_id
+            )
+        `)
+        .eq('status', 'active')
+        .eq('agent_departments.department_id', departmentId);
+
+    if (agents && agents.length > 0) {
+        // Pick one randomly
+        const randomAgent = agents[Math.floor(Math.random() * agents.length)];
+        return randomAgent.id;
+    }
+    return null;
+}
+
+client.on("message", async (msg) => {
+    try {
+        if (!msg.from || msg.from.endsWith("@g.us")) return;
+        const chat = await msg.getChat();
+        if (chat.isGroup) return;
+
+        // 1. Get or Create Conversation to ensure we have UUID
         const { data: conversation } = await supabase
             .from('conversations')
             .upsert({
@@ -112,38 +136,53 @@ client.on("message_create", async (msg) => {
             .select()
             .single();
 
-        // Save message
-        if (conversation) {
-            await supabase.from('messages').insert({
-                conversation_id: conversation.id,
-                message_id: msg.id._serialized,
-                from_me: msg.fromMe,
-                body: msg.body || '',
-                timestamp: new Date(msg.timestamp * 1000).toISOString(),
-                has_media: msg.hasMedia,
-                media_type: msg.type
-            });
+        if (!conversation) return;
+
+        // 2. Check if already assigned (Human agent handling it)
+        const isAssigned = await hasActiveAssignment(conversation.id);
+        if (isAssigned) {
+            // If assigned, we DO NOT auto-reply. The agent handles it.
+            return;
         }
-    } catch (error) {
-        console.error('DB save error:', error.message);
-    }
 
-    // Always emit to frontend
-    io.emit('message', msg);
-});
+        // 3. Check for Department Selection (1-5)
+        const body = msg.body.trim();
+        const menuOptions = ['Fiscal', 'Contábil', 'DP', 'Societário', 'Financeiro'];
+        const selection = parseInt(body);
 
-// Also keep the auto-reply logic
-client.on("message", async (msg) => {
-    try {
-        if (!msg.from || msg.from.endsWith("@g.us")) return;
-        const chat = await msg.getChat();
-        if (chat.isGroup) return;
+        if (!isNaN(selection) && selection >= 1 && selection <= 5) {
+            const selectedDeptName = menuOptions[selection - 1];
+            const deptId = departmentsCache[selectedDeptName];
 
-        const texto = msg.body ? msg.body.trim().toLowerCase() : "";
+            if (deptId) {
+                await chat.sendStateTyping();
 
-        if (/^(menu|oi|olá|ola|bom dia|boa tarde|boa noite)$/i.test(texto)) {
+                // Try to find an agent
+                const agentId = await findAvailableAgent(deptId);
+
+                // Create Assignment (even if agentId is null - meaning "Queued")
+                await supabase.from('conversation_assignments').insert({
+                    conversation_id: conversation.id,
+                    agent_id: agentId, // If null, it's just in the department queue
+                    status: 'active'
+                });
+
+                let replyMsg = `✅ Entendido! Transferindo para o setor *${selectedDeptName}*.`;
+                if (!agentId) {
+                    replyMsg += `\n\nTodos os nossos atendentes estão ocupados no momento, mas sua mensagem já está na fila.`;
+                } else {
+                    replyMsg += `\n\nUm de nossos especialistas falará com você em breve.`;
+                }
+
+                await client.sendMessage(msg.from, replyMsg);
+                return;
+            }
+        }
+
+        // 4. Greeting / Menu (Only if not assigned and not a valid selection)
+        if (/^(menu|oi|olá|ola|bom dia|boa tarde|boa noite|inicio|start)$/i.test(body)) {
             await chat.sendStateTyping();
-            await new Promise(r => setTimeout(r, 2000));
+            await new Promise(r => setTimeout(r, 1500));
 
             const hora = new Date().getHours();
             let saudacao = "Olá";
@@ -213,6 +252,194 @@ app.get('/api/info', (req, res) => {
         res.json(client.info);
     } else {
         res.status(404).json({ error: 'Client not ready' });
+    }
+});
+
+// =====================================
+// CONVERSATION MANAGEMENT ROUTES
+// =====================================
+
+// Get my conversations (for logged-in agent)
+app.get('/api/conversations/my-conversations', async (req, res) => {
+    try {
+        const agentEmail = req.query.email; // Temporary - will use JWT later
+
+        if (!agentEmail) {
+            return res.status(400).json({ error: 'Agent email required' });
+        }
+
+        // Get agent ID
+        const { data: agent } = await supabase
+            .from('agents')
+            .select('id')
+            .eq('email', agentEmail)
+            .single();
+
+        if (!agent) {
+            return res.status(404).json({ error: 'Agent not found' });
+        }
+
+        // Get conversations assigned to this agent
+        const { data: assignments, error } = await supabase
+            .from('conversation_assignments')
+            .select(`
+                id,
+                status,
+                assigned_at,
+                conversation_id,
+                conversations (
+                    id,
+                    chat_id,
+                    name,
+                    phone,
+                    last_message_at,
+                    priority,
+                    tags,
+                    unread_count
+                ),
+                departments (
+                    id,
+                    name
+                )
+            `)
+            .eq('agent_id', agent.id)
+            .in('status', ['active', 'queued'])
+            .order('assigned_at', { ascending: false });
+
+        if (error) throw error;
+
+        res.json(assignments || []);
+    } catch (error) {
+        console.error('Error fetching my conversations:', error);
+        res.status(500).json({ error: 'Failed to fetch conversations' });
+    }
+});
+
+// Get conversations by department
+app.get('/api/departments/:id/conversations', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { data: assignments, error } = await supabase
+            .from('conversation_assignments')
+            .select(`
+                id,
+                status,
+                assigned_at,
+                agent_id,
+                conversation_id,
+                conversations (
+                    id,
+                    chat_id,
+                    name,
+                    phone,
+                    last_message_at,
+                    priority,
+                    unread_count
+                ),
+                agents (
+                    id,
+                    name,
+                    email
+                )
+            `)
+            .eq('department_id', id)
+            .in('status', ['active', 'queued'])
+            .order('assigned_at', { ascending: false });
+
+        if (error) throw error;
+
+        res.json(assignments || []);
+    } catch (error) {
+        console.error('Error fetching department conversations:', error);
+        res.status(500).json({ error: 'Failed to fetch conversations' });
+    }
+});
+
+// Assign conversation to me
+app.post('/api/conversations/:id/assign-to-me', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { agentEmail } = req.body;
+
+        if (!agentEmail) {
+            return res.status(400).json({ error: 'Agent email required' });
+        }
+
+        // Get agent ID
+        const { data: agent } = await supabase
+            .from('agents')
+            .select('id')
+            .eq('email', agentEmail)
+            .single();
+
+        if (!agent) {
+            return res.status(404).json({ error: 'Agent not found' });
+        }
+
+        // Update assignment
+        const { data, error } = await supabase
+            .from('conversation_assignments')
+            .update({
+                agent_id: agent.id,
+                status: 'active',
+                assigned_at: new Date().toISOString()
+            })
+            .eq('conversation_id', id)
+            .is('agent_id', null)
+            .select()
+            .single();
+
+        if (error) {
+            return res.status(400).json({ error: 'Conversation already assigned or not found' });
+        }
+
+        res.json(data);
+    } catch (error) {
+        console.error('Error assigning conversation:', error);
+        res.status(500).json({ error: 'Failed to assign conversation' });
+    }
+});
+
+// Close/finish conversation
+app.post('/api/conversations/:id/close', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { agentEmail } = req.body;
+
+        if (!agentEmail) {
+            return res.status(400).json({ error: 'Agent email required' });
+        }
+
+        // Get agent ID
+        const { data: agent } = await supabase
+            .from('agents')
+            .select('id')
+            .eq('email', agentEmail)
+            .single();
+
+        if (!agent) {
+            return res.status(404).json({ error: 'Agent not found' });
+        }
+
+        // Update assignment status
+        const { data, error } = await supabase
+            .from('conversation_assignments')
+            .update({
+                status: 'closed',
+                closed_at: new Date().toISOString()
+            })
+            .eq('conversation_id', id)
+            .eq('agent_id', agent.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.json(data);
+    } catch (error) {
+        console.error('Error closing conversation:', error);
+        res.status(500).json({ error: 'Failed to close conversation' });
     }
 });
 
