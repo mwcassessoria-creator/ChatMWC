@@ -191,9 +191,12 @@ function App() {
                 <div className="flex flex-1 overflow-hidden">
                     <MyConversations
                         currentUser={currentUser}
-                        onSelectConversation={(chatId) => {
+                        onSelectConversation={(chatId, conversationId) => {
                             const chat = chats.find(c => c.id._serialized === chatId);
-                            if (chat) setActiveChat(chat);
+                            if (chat) {
+                                chat.conversationId = conversationId; // Store conversation ID
+                                setActiveChat(chat);
+                            }
                         }}
                     />
                     {activeChat ? (

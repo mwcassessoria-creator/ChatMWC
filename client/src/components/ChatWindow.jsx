@@ -37,22 +37,21 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onClose }) => 
             return;
         }
 
+        if (!chat.conversationId) {
+            alert('Esta conversa não está atribuída a você.');
+            return;
+        }
+
         const confirmed = window.confirm('Deseja encerrar este atendimento?');
         if (!confirmed) return;
 
         try {
             setIsClosing(true);
-            // Get conversation ID from chat
-            const { data: conversation } = await axios.get(`${API_URL}/api/chats`);
-            const conv = conversation.find(c => c.id._serialized === chat.id._serialized);
-
-            if (conv) {
-                await axios.post(`${API_URL}/api/conversations/${conv.id}/close`, {
-                    agentEmail: currentUser
-                });
-                alert('Atendimento encerrado com sucesso!');
-                if (onClose) onClose();
-            }
+            await axios.post(`${API_URL}/api/conversations/${chat.conversationId}/close`, {
+                agentEmail: currentUser
+            });
+            alert('Atendimento encerrado com sucesso!');
+            if (onClose) onClose();
         } catch (error) {
             console.error('Error closing conversation:', error);
             alert('Erro ao encerrar atendimento. Tente novamente.');
