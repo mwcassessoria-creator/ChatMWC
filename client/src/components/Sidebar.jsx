@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageSquare, Users, Settings, UserPlus, LogOut, LayoutDashboard } from 'lucide-react';
+import { MessageSquare, Users, Settings, UserPlus, LogOut, LayoutDashboard, Inbox } from 'lucide-react';
 
 const Sidebar = ({ status, onLogout, onNavigate, currentView }) => {
     const getStatusColor = () => {
@@ -44,9 +44,15 @@ const Sidebar = ({ status, onLogout, onNavigate, currentView }) => {
                 <nav className="space-y-2">
                     <NavItem
                         icon={<MessageSquare size={20} />}
-                        label="Conversas"
+                        label="Minhas Conversas"
+                        onClick={() => onNavigate?.('my-conversations')}
+                        active={currentView === 'my-conversations'}
+                    />
+                    <NavItem
+                        icon={<Inbox size={20} />}
+                        label="Todas Conversas"
                         onClick={() => onNavigate?.('conversations')}
-                        active={currentView === 'conversations' || currentView === 'my-conversations'} // Simplification for demo
+                        active={currentView === 'conversations'}
                     />
                     <NavItem
                         icon={<Users size={20} />}
@@ -88,8 +94,8 @@ const NavItem = ({ icon, label, active, count, onClick }) => {
         <button
             onClick={onClick}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 group ${active
-                    ? 'bg-[#1e293b] text-blue-400 shadow-sm'
-                    : 'text-gray-400 hover:bg-white/5 hover:text-gray-100'
+                ? 'bg-[#1e293b] text-blue-400 shadow-sm'
+                : 'text-gray-400 hover:bg-white/5 hover:text-gray-100'
                 }`}
         >
             <div className="flex items-center gap-3">
