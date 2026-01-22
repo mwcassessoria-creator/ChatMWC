@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { MessageSquare } from 'lucide-react';
 import Login from './components/Login';
 import SetPassword from './components/SetPassword';
 import Sidebar from './components/Sidebar';
@@ -247,18 +248,24 @@ function App() {
                             onClose={() => setActiveChat(null)}
                         />
                     ) : (
-                        <div className="flex-1 flex items-center justify-center bg-gray-50 text-gray-400">
-                            {status === 'qr_needed' && qrCode ? (
-                                <div className="text-center">
-                                    <p className="mb-4">Scan the QR Code to connect</p>
-                                    {/* You would need a QR code component here, or just display raw text for now */}
-                                    <div className="bg-white p-4 inline-block rounded shadow">
-                                        <QRCodeSVG value={qrCode} size={256} />
-                                    </div>
+                        <div className="flex-1 flex flex-col items-center justify-center bg-gray-50/50 p-8 text-center">
+                            <div className="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mb-6 relative">
+                                <MessageSquare size={40} className="text-blue-500" />
+                                <div className="absolute -bottom-2 -right-2 bg-white p-2 rounded-full shadow-sm">
+                                    <MessageSquare size={16} className="text-blue-500" />
                                 </div>
-                            ) : (
-                                <p>Select a conversation to start chatting</p>
-                            )}
+                            </div>
+
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">Select a conversation</h2>
+                            <p className="text-sm text-gray-500 max-w-sm mb-8">
+                                Choose a conversation from the left to start chatting with your customers. You can search by name or contact details.
+                            </p>
+
+                            <div className="flex gap-3">
+                                <span className="px-4 py-2 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-500 uppercase tracking-widest cursor-pointer hover:border-gray-300">Active Chats</span>
+                                <span className="px-4 py-2 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-500 uppercase tracking-widest cursor-pointer hover:border-gray-300">Support Queue</span>
+                                <span className="px-4 py-2 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-500 uppercase tracking-widest cursor-pointer hover:border-gray-300">History</span>
+                            </div>
                         </div>
                     )}
                 </div>
