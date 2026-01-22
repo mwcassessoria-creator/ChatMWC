@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Phone, Video, MoreVertical, Paperclip, Smile, XCircle } from 'lucide-react';
+import { Send, Phone, Video, MoreVertical, Paperclip, Smile, XCircle, Edit2, Save, Building, ArrowRightLeft } from 'lucide-react';
 import axios from 'axios';
+import TransferModal from './TransferModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onClose }) => {
     const [inputText, setInputText] = useState('');
     const [isClosing, setIsClosing] = useState(false);
+    const [showTransferModal, setShowTransferModal] = useState(false);
+    const [isEditingDetails, setIsEditingDetails] = useState(false);
+    const [editedName, setEditedName] = useState('');
+    const [editedCompany, setEditedCompany] = useState('');
     const messagesEndRef = useRef(null);
 
     const scrollToBottom = () => {
@@ -16,6 +21,14 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onClose }) => 
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    useEffect(() => {
+        if (chat) {
+            setEditedName(chat.name || '');
+            setEditedCompany(chat.company || ''); // Ensure chat object has company if available
+            setIsEditingDetails(false);
+        }
+    }, [chat]);
 
     const handleSend = () => {
         if (inputText.trim()) {
@@ -60,32 +73,122 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onClose }) => 
         }
     };
 
+    const handleTransfer = async (targetAgentId) => {
+        if (!currentUser || !chat.conversationId) return;
+
+        try {
+            await axios.post(`${API_URL}/api/conversations/${chat.conversationId}/transfer`, {
+                targetAgentId,
+                agentEmail: currentUser
+            });
+            alert('Atendimento transferido com sucesso!');
+            setShowTransferModal(false);
+            if (onClose) onClose();
+        } catch (error) {
+            console.error('Error transferring conversation:', error);
+            alert('Erro ao transferir atendimento.');
+        }
+    };
+
+    const handleSaveDetails = async () => {
+        if (!chat.conversationId) return;
+
+        try {
+            await axios.put(`${API_URL}/api/conversations/${chat.conversationId}/details`, {
+                name: editedName,
+                company: editedCompany
+            });
+
+            // Update local chat object reference if possible, or trigger refresh
+            chat.name = editedName;
+            chat.company = editedCompany;
+
+            setIsEditingDetails(false);
+            alert('Dados atualizados!');
+        } catch (error) {
+            console.error('Error updating details:', error);
+            alert('Erro ao atualizar dados. Verifique se a coluna "company" existe no banco de dados.');
+        }
+    };
+
     return (
         <div className="flex-1 flex flex-col h-screen bg-white">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-500">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between shadow-sm z-10">
+                <div className="flex items-center gap-4 flex-1">
+                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-600 text-xl">
                         {chat.name.charAt(0)}
                     </div>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h2 className="font-bold text-gray-900">{chat.name}</h2>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
-                            <span>{chat.id.user}</span>
-                        </div>
+                    <div className="flex-1">
+                        {isEditingDetails ? (
+                            <div className="flex flex-col gap-2 max-w-sm">
+                                <input
+                                    type="text"
+                                    value={editedName}
+                                    onChange={(e) => setEditedName(e.target.value)}
+                                    className="border border-gray-300 rounded px-2 py-1 text-sm font-bold"
+                                    placeholder="Nome do Cliente"
+                                />
+                                <input
+                                    type="text"
+                                    value={editedCompany}
+                                    onChange={(e) => setEditedCompany(e.target.value)}
+                                    className="border border-gray-300 rounded px-2 py-1 text-xs"
+                                    placeholder="Empresa"
+                                />
+                            </div>
+                        ) : (
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h2 className="font-bold text-gray-900 text-lg">{chat.name}</h2>
+                                    {chat.company && (
+                                        <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
+                                            <Building size={10} />
+                                            {chat.company}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-gray-500 mt-0.5">
+                                    <span>{chat.id.user}</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
+
+                    <button
+                        onClick={() => isEditingDetails ? handleSaveDetails() : setIsEditingDetails(true)}
+                        className={`p-2 rounded-full transition-colors ${isEditingDetails ? 'bg-green-100 text-green-600 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                        title={isEditingDetails ? "Salvar" : "Editar Dados"}
+                    >
+                        {isEditingDetails ? <Save size={18} /> : <Edit2 size={18} />}
+                    </button>
+                    {isEditingDetails && (
+                        <button
+                            onClick={() => setIsEditingDetails(false)}
+                            className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                            title="Cancelar"
+                        >
+                            <XCircle size={18} />
+                        </button>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setShowTransferModal(true)}
+                        className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2 text-sm font-medium"
+                    >
+                        <ArrowRightLeft size={18} />
+                        Transferir
+                    </button>
+
                     <button
                         onClick={handleCloseConversation}
                         disabled={isClosing}
                         className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <XCircle size={18} />
-                        {isClosing ? 'Encerrando...' : 'Encerrar Atendimento'}
+                        {isClosing ? 'Encerrando...' : 'Encerrar'}
                     </button>
                     <button className="p-2 text-gray-400 hover:text-gray-600"><MoreVertical size={20} /></button>
                 </div>
@@ -97,7 +200,7 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onClose }) => 
                     <Message
                         key={index}
                         isMe={msg.fromMe}
-                        name={msg.fromMe ? "You" : chat.name}
+                        name={msg.fromMe ? "Você" : chat.name}
                         time={new Date(msg.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         text={msg.body}
                     />
@@ -109,7 +212,7 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onClose }) => 
             <div className="p-6 border-t border-gray-200 bg-white">
                 <div className="border border-gray-200 rounded-xl p-4 shadow-sm focus-within:ring-2 focus-within:ring-blue-100 transition-shadow">
                     <textarea
-                        placeholder="Type a message..."
+                        placeholder="Digite uma mensagem..."
                         className="w-full resize-none text-sm focus:outline-none mb-3"
                         rows={2}
                         value={inputText}
@@ -124,19 +227,27 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onClose }) => 
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <span className="text-xs text-gray-400">Press <b>Enter</b> to send</span>
+                            <span className="text-xs text-gray-400">Pressione <b>Enter</b> para enviar</span>
                             <button
                                 onClick={handleSend}
                                 className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
                                 disabled={!inputText.trim()}
                             >
-                                <span>Send</span>
+                                <span>Enviar</span>
                                 <Send size={16} />
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {showTransferModal && (
+                <TransferModal
+                    onClose={() => setShowTransferModal(false)}
+                    onTransfer={handleTransfer}
+                    currentAgentEmail={currentUser}
+                />
+            )}
         </div>
     );
 };

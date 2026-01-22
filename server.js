@@ -347,9 +347,9 @@ app.post('/api/send', async (req, res) => {
                 .select('name')
                 .eq('email', agentEmail)
                 .single();
-            
+
             if (agent && agent.name) {
-                messageToSend = `*${agent.name}:* ${message}`;
+                messageToSend = `*${agent.name}:*\n${message}`;
             }
         }
 
@@ -558,6 +558,7 @@ app.post('/api/conversations/:id/close', async (req, res) => {
             })
             .eq('conversation_id', id)
             .eq('agent_id', agent.id)
+            .eq('status', 'active') // Only close active assignments
             .select()
             .single();
 
@@ -567,6 +568,70 @@ app.post('/api/conversations/:id/close', async (req, res) => {
     } catch (error) {
         console.error('Error closing conversation:', error);
         res.status(500).json({ error: 'Failed to close conversation' });
+    }
+});
+
+// Transfer conversation
+app.post('/api/conversations/:id/transfer', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { targetAgentId, agentEmail } = req.body;
+
+        if (!agentEmail || !targetAgentId) {
+            return res.status(400).json({ error: 'Agent email and target agent ID required' });
+        }
+
+        // Get requesting agent ID
+        const { data: agent } = await supabase
+            .from('agents')
+            .select('id')
+            .eq('email', agentEmail)
+            .single();
+
+        if (!agent) {
+            return res.status(404).json({ error: 'Requesting agent not found' });
+        }
+
+        // Update assignment to new agent
+        const { data, error } = await supabase
+            .from('conversation_assignments')
+            .update({
+                agent_id: targetAgentId,
+                assigned_at: new Date().toISOString() // Update assignment time? Optional.
+            })
+            .eq('conversation_id', id)
+            .eq('status', 'active') // Only transfer active assignments
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.json(data);
+    } catch (error) {
+        console.error('Error transferring conversation:', error);
+        res.status(500).json({ error: 'Failed to transfer conversation' });
+    }
+});
+
+// Update conversation details (name, company)
+app.put('/api/conversations/:id/details', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, company } = req.body;
+
+        const { data, error } = await supabase
+            .from('conversations')
+            .update({ name, company })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.json(data);
+    } catch (error) {
+        console.error('Error updating conversation details:', error);
+        res.status(500).json({ error: 'Failed to update details' });
     }
 });
 
