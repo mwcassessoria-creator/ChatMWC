@@ -13,6 +13,7 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onClose }) => 
     const [editedName, setEditedName] = useState('');
     const [editedCompany, setEditedCompany] = useState('');
     const [editedPhone, setEditedPhone] = useState('');
+    const [editedPriority, setEditedPriority] = useState('normal');
     const messagesEndRef = useRef(null);
 
     const scrollToBottom = () => {
@@ -31,6 +32,8 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onClose }) => 
             // Extract phone from ID
             const phone = typeof chat.id === 'string' ? chat.id.split('@')[0] : chat.id?.user?.split('@')[0] || '';
             setEditedPhone(phone);
+
+            setEditedPriority(chat.priority || 'normal');
 
             setIsEditingDetails(false);
         }
@@ -111,12 +114,14 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onClose }) => 
             await axios.put(`${API_URL}/api/conversations/${chat.conversationId}/details`, {
                 name: editedName,
                 company: editedCompany,
-                phone: editedPhone
+                phone: editedPhone,
+                priority: editedPriority
             });
 
             // Update local chat object reference
             chat.name = editedName;
             chat.company = editedCompany;
+            chat.priority = editedPriority;
 
             if (editedPhone) {
                 const cleanPhone = editedPhone.replace(/\D/g, '');
@@ -182,6 +187,20 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onClose }) => 
                                             placeholder="Nome da Empresa"
                                         />
                                     </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 mb-1">Prioridade</label>
+                                    <select
+                                        value={editedPriority}
+                                        onChange={(e) => setEditedPriority(e.target.value)}
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white"
+                                    >
+                                        <option value="low">Baixa</option>
+                                        <option value="normal">Normal</option>
+                                        <option value="high">Alta</option>
+                                        <option value="urgent">Urgente</option>
+                                    </select>
                                 </div>
 
                                 <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100">

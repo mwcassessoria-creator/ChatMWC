@@ -613,13 +613,17 @@ app.post('/api/conversations/:id/transfer', async (req, res) => {
     }
 });
 
-// Update conversation details (name, company, phone)
+// Update conversation details (name, company, phone, priority)
 app.put('/api/conversations/:id/details', async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, company, phone } = req.body;
+        const { name, company, phone, priority } = req.body;
 
         const updates = { name, company };
+
+        if (priority) {
+            updates.priority = priority;
+        }
 
         if (phone) {
             // Sanitize phone (keep only digits)
@@ -679,6 +683,54 @@ app.post('/api/agents', async (req, res) => {
         res.json(agent);
     } catch (error) {
         console.error('Agent registration error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Update agent
+app.put('/api/agents/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name, email, phone, departmentIds } = req.body;
+
+    try {
+        // 1. Update agent details
+        const { data: agent, error: agentError } = await supabase
+            .from('agents')
+            .update({ name, email, phone })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (agentError) throw agentError;
+
+        // 2. Update departments (Delete existing, then insert new)
+        if (departmentIds) {
+            // Delete existing
+            const { error: deleteError } = await supabase
+                .from('agent_departments')
+                .delete()
+                .eq('agent_id', id);
+
+            if (deleteError) throw deleteError;
+
+            // Insert new
+            if (departmentIds.length > 0) {
+                const assignments = departmentIds.map(deptId => ({
+                    agent_id: id,
+                    department_id: deptId
+                }));
+
+                const { error: insertError } = await supabase
+                    .from('agent_departments')
+                    .insert(assignments);
+
+                if (insertError) throw insertError;
+            }
+        }
+
+        res.json(agent);
+    } catch (error) {
+        console.error('Agent update error:', error);
         res.status(500).json({ error: error.message });
     }
 });

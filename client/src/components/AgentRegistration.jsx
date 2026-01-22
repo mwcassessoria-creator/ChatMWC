@@ -4,7 +4,7 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-const AgentRegistration = ({ onClose, onSuccess }) => {
+const AgentRegistration = ({ onClose, onSuccess, agentToEdit }) => {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -17,7 +17,15 @@ const AgentRegistration = ({ onClose, onSuccess }) => {
 
     useEffect(() => {
         fetchDepartments();
-    }, []);
+        if (agentToEdit) {
+            setFormData({
+                name: agentToEdit.name,
+                email: agentToEdit.email,
+                phone: agentToEdit.phone || '',
+                departmentIds: agentToEdit.departments?.map(d => d.id) || []
+            });
+        }
+    }, [agentToEdit]);
 
     const fetchDepartments = async () => {
         try {
@@ -34,11 +42,15 @@ const AgentRegistration = ({ onClose, onSuccess }) => {
         setError('');
 
         try {
-            await axios.post(`${API_URL}/api/agents`, formData);
+            if (agentToEdit) {
+                await axios.put(`${API_URL}/api/agents/${agentToEdit.id}`, formData);
+            } else {
+                await axios.post(`${API_URL}/api/agents`, formData);
+            }
             onSuccess?.();
             onClose();
         } catch (err) {
-            setError(err.response?.data?.error || 'Erro ao cadastrar atendente');
+            setError(err.response?.data?.error || `Erro ao ${agentToEdit ? 'atualizar' : 'cadastrar'} atendente`);
         } finally {
             setLoading(false);
         }
@@ -68,8 +80,8 @@ const AgentRegistration = ({ onClose, onSuccess }) => {
                         <UserPlus className="text-blue-600" size={24} />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-900">Cadastrar Atendente</h2>
-                        <p className="text-sm text-gray-500">Preencha os dados abaixo</p>
+                        <h2 className="text-2xl font-bold text-gray-900">{agentToEdit ? 'Editar Atendente' : 'Cadastrar Atendente'}</h2>
+                        <p className="text-sm text-gray-500">{agentToEdit ? 'Atualize os dados abaixo' : 'Preencha os dados abaixo'}</p>
                     </div>
                 </div>
 
@@ -163,7 +175,7 @@ const AgentRegistration = ({ onClose, onSuccess }) => {
                             disabled={loading || formData.departmentIds.length === 0}
                             className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                         >
-                            {loading ? 'Cadastrando...' : 'Cadastrar'}
+                            {loading ? (agentToEdit ? 'Atualizando...' : 'Cadastrando...') : (agentToEdit ? 'Salvar Alterações' : 'Cadastrar')}
                         </button>
                     </div>
                 </form>

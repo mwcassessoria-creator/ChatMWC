@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Users, MessageSquare, Clock, TrendingUp, Search, Filter, Trash2 } from 'lucide-react';
+import { Users, MessageSquare, Clock, TrendingUp, Search, Filter, Trash2, Edit2 } from 'lucide-react';
 import axios from 'axios';
+import AgentRegistration from './AgentRegistration';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -9,6 +10,7 @@ const AgentsView = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedAgent, setSelectedAgent] = useState(null);
+    const [agentToEdit, setAgentToEdit] = useState(null);
 
     useEffect(() => {
         fetchAgents();
@@ -37,6 +39,11 @@ const AgentsView = () => {
                 alert("Erro ao excluir atendente. Tente novamente.");
             }
         }
+    };
+
+    const handleEditAgent = (agent, e) => {
+        e.stopPropagation();
+        setAgentToEdit(agent);
     };
 
     const filteredAgents = agents.filter(agent =>
@@ -110,6 +117,13 @@ const AgentsView = () => {
                                         {agent.status === 'active' ? 'Ativo' : agent.status === 'busy' ? 'Ocupado' : 'Inativo'}
                                     </span>
                                     <button
+                                        onClick={(e) => handleEditAgent(agent, e)}
+                                        className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                        title="Editar Atendente"
+                                    >
+                                        <Edit2 size={16} />
+                                    </button>
+                                    <button
                                         onClick={(e) => handleDeleteAgent(agent.id, agent.name, e)}
                                         className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                                         title="Excluir Atendente"
@@ -160,8 +174,20 @@ const AgentsView = () => {
                 )}
             </div>
 
-            {/* Agent Detail Modal (optional - can be expanded later) */}
-            {selectedAgent && (
+            {/* Edit Agent Modal */}
+            {agentToEdit && (
+                <AgentRegistration
+                    agentToEdit={agentToEdit}
+                    onClose={() => setAgentToEdit(null)}
+                    onSuccess={() => {
+                        setAgentToEdit(null);
+                        fetchAgents();
+                    }}
+                />
+            )}
+
+            {/* Agent Detail Modal */}
+            {selectedAgent && !agentToEdit && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setSelectedAgent(null)}>
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6" onClick={(e) => e.stopPropagation()}>
                         <h2 className="text-2xl font-bold mb-4">{selectedAgent.name}</h2>
