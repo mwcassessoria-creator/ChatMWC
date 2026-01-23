@@ -3,7 +3,7 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-function MyConversations({ currentUser, onSelectConversation }) {
+function MyConversations({ currentUser, onSelectConversation, socket }) {
     const [conversations, setConversations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('active'); // active (Em andamento), queued (Pendente), closed (Resolvido), all
@@ -14,6 +14,20 @@ function MyConversations({ currentUser, onSelectConversation }) {
             fetchMyConversations();
         }
     }, [currentUser]);
+
+    // Listen for real-time updates
+    useEffect(() => {
+        if (socket) {
+            const handleMessage = (msg) => {
+                // Refresh list on ANY message (simple approach)
+                // In production, you might want to filter only if it affects me
+                fetchMyConversations();
+            };
+
+            socket.on('message', handleMessage);
+            return () => socket.off('message', handleMessage);
+        }
+    }, [socket, currentUser]);
 
     const fetchMyConversations = async () => {
         try {
@@ -160,7 +174,7 @@ function MyConversations({ currentUser, onSelectConversation }) {
                     filteredConversations.map((conv) => (
                         <div
                             key={conv.id}
-                            onClick={() => onSelectConversation(conv.conversations.chat_id, conv.conversation_id)}
+                            onClick={() => onSelectConversation(conv.conversations.chat_id, conv.conversation_id, conv.id)}
                             className="bg-white border-b border-gray-200 p-4 hover:bg-gray-50 cursor-pointer transition-colors"
                         >
                             <div className="flex items-start justify-between">
@@ -175,7 +189,20 @@ function MyConversations({ currentUser, onSelectConversation }) {
                                             </span>
                                         )}
                                     </div>
-                                    <p className="text-sm text-gray-600 mb-2">
+                                    <div className="flex items-center gap-1 mb-1 text-xs text-mono text-gray-400">
+                                        #{conv.id.slice(0, 8)}
+                                        {conv.status === 'active' && (
+                                            <span className="text-green-600 font-bold ml-1">• Ativo</span>
+                                        )}
+                                        {conv.status === 'closed' && (
+                                            <span className="text-gray-500 font-medium ml-1">• Encerrado</span>
+                                        )}
+                                        {conv.status === 'transferred' && (
+                                            <span className="text-blue-500 font-medium ml-1">• Transferido</span>
+                                        )}
+                                    </div>
+
+                                    <p className="text-sm text-gray-600 mb-2 truncate">
                                         {conv.conversations.phone}
                                     </p>
                                     <div className="flex items-center gap-2 flex-wrap">
@@ -195,9 +222,14 @@ function MyConversations({ currentUser, onSelectConversation }) {
                                     </div>
                                 </div>
                                 <div className="text-right ml-4">
-                                    <span className="text-xs text-gray-500">
+                                    <span className="text-xs text-gray-500 block">
                                         {formatTime(conv.conversations.last_message_at)}
                                     </span>
+                                    {conv.status === 'closed' && conv.closed_at && (
+                                        <span className="text-[10px] text-gray-400 block mt-1">
+                                            Fim: {new Date(conv.closed_at).toLocaleDateString()}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         </div>

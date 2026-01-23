@@ -77,7 +77,26 @@ function App() {
             // Real-time message listener
             newSocket.on('message', (msg) => {
                 if (activeChatRef.current && (msg.from === activeChatRef.current.id._serialized || msg.to === activeChatRef.current.id._serialized)) {
-                    setMessages(prev => [...prev, msg]);
+                    // Check for Ticket Change (New session started purely by backend)
+                    setMessages(prev => {
+                        const lastMsg = prev[prev.length - 1];
+                        if (lastMsg && msg.ticketId && lastMsg.ticket_id && msg.ticketId !== lastMsg.ticket_id) {
+                            return [msg];
+                        }
+                        return [...prev, msg];
+                    });
+                } else {
+                    // Background notification
+                    if (!msg.fromMe) {
+                        try {
+                            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+                            audio.play().catch(e => console.log('Audio play failed:', e));
+                        } catch (err) { }
+
+                        // Show Toast (if not me)
+                        setNotification(msg.body);
+                        setTimeout(() => setNotification(null), 5000);
+                    }
                 }
                 fetchChats();
             });
@@ -109,9 +128,43 @@ function App() {
     // Fetch chats on chat select (actually just set active and get messages)
     useEffect(() => {
         if (activeChat) {
-            fetchMessages(activeChat.id._serialized);
+            // checkActiveTicket(activeChat.id._serialized); // Assuming this function exists or is intended to be added
+            // Pass the specific ticket ID if selected (for viewing history)
+            fetchMessages(activeChat.id._serialized, activeChat.selectedTicketId);
+        } else {
+            setMessages([]);
         }
     }, [activeChat]);
+
+    const autoAssignToMe = async (conversationId) => {
+        try {
+            await axios.post(`${API_URL}/api/conversations/${conversationId}/assign-to-me`, {
+                agentEmail: currentUser
+            });
+
+            // 1. Fetch fresh list of chats from backend
+            const updatedChats = await fetchChats();
+
+            // 2. Find the updated conversation in the fresh list
+            if (updatedChats && updatedChats.length > 0) {
+                const updatedChat = updatedChats.find(c => c.conversationId === conversationId);
+
+                // 3. Update activeChat with the FULL object (which now has valid agent_id)
+                if (updatedChat) {
+                    setActiveChat(updatedChat);
+                    // 4. Force specific message refresh just in case
+                    if (updatedChat.id && updatedChat.id._serialized) {
+                        fetchMessages(updatedChat.id._serialized);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Auto-assign error:', error.response?.data || error.message);
+            const errorMessage = error.response?.data?.error || error.message;
+            const errorDetails = error.response?.data?.details || '';
+            alert(`Erro ao assumir atendimento: ${errorMessage}\n${errorDetails}`);
+        }
+    };
 
     const fetchChats = async () => {
         try {
@@ -119,14 +172,17 @@ function App() {
             setChats(response.data);
             // default filter
             setConversations(response.data);
+            return response.data; // Return data for chaining
         } catch (error) {
             console.error("Error fetching chats:", error);
+            return [];
         }
     };
 
-    const fetchMessages = async (chatId) => {
+    const fetchMessages = async (chatId, ticketId = null) => {
         try {
-            const response = await axios.get(`${API_URL}/api/messages/${chatId}`);
+            const params = ticketId ? { ticketId } : {};
+            const response = await axios.get(`${API_URL}/api/messages/${chatId}`, { params });
             setMessages(response.data);
         } catch (error) {
             console.error("Error fetching messages:", error);
@@ -144,6 +200,35 @@ function App() {
             // Optimistic update or wait for socket event
         } catch (error) {
             console.error("Failed to send:", error);
+        }
+    };
+
+    const handleCloseTicket = async (conversationId) => {
+        try {
+            await axios.post(`${API_URL}/api/conversations/${conversationId}/close`, {
+                agentEmail: currentUser
+            });
+            // Refresh
+            fetchChats();
+        } catch (error) {
+            console.error("Failed to close ticket:", error);
+            throw error; // Re-throw to be caught by UI
+        }
+    };
+
+    const handleTransferTicket = async (conversationId, targetAgentId) => {
+        try {
+            await axios.post(`${API_URL}/api/conversations/${conversationId}/transfer`, {
+                targetAgentId,
+                agentEmail: currentUser
+            });
+            fetchChats();
+        } catch (error) {
+            console.error("Failed to transfer ticket:", error);
+            const errorMessage = error.response?.data?.error || error.message;
+            const errorDetails = error.response?.data?.details || '';
+            alert(`Erro ao transferir atendimento: ${errorMessage}\n${errorDetails}`);
+            throw error;
         }
     };
 
@@ -192,6 +277,7 @@ function App() {
                 onLogout={handleLogout}
                 onNavigate={setCurrentView}
                 currentView={currentView}
+                currentUser={currentUser}
             />
 
             {currentView === 'agents' ? (
@@ -200,10 +286,12 @@ function App() {
                 <div className="flex flex-1 overflow-hidden">
                     <MyConversations
                         currentUser={currentUser}
-                        onSelectConversation={(chatId, conversationId) => {
+                        socket={socket} // Pass socket for realtime updates
+                        onSelectConversation={(chatId, conversationId, ticketId) => {
                             const chat = chats.find(c => c.id._serialized === chatId);
                             if (chat) {
                                 chat.conversationId = conversationId; // Store conversation ID
+                                chat.selectedTicketId = ticketId; // Store specific ticket ID
                                 setActiveChat(chat);
                             }
                         }}
@@ -211,14 +299,12 @@ function App() {
                     {activeChat ? (
                         <ChatWindow
                             chat={activeChat}
+                            currentUser={currentUser}
                             messages={messages}
                             onSendMessage={handleSendMessage}
-                            currentUser={currentUser}
-                            onClose={() => {
-                                setActiveChat(null);
-                                // Refresh conversations list
-                                fetchChats();
-                            }}
+                            onCloseTicket={handleCloseTicket}
+                            onTransferTicket={handleTransferTicket}
+                            onAssignToMe={(convId) => autoAssignToMe(convId)}
                         />
                     ) : (
                         <div className="flex-1 flex items-center justify-center bg-gray-50 text-gray-400">

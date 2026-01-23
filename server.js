@@ -117,15 +117,63 @@ async function findAvailableAgent(departmentId) {
     return null;
 }
 
-// Helper to save message to Supabase
-async function saveMessageToSupabase(conversationId, msg) {
+// Helper to get or create active ticket
+async function getOrCreateActiveTicket(conversationId, departmentId = null, agentId = null) {
+    console.log('[TICKET] Looking for active ticket:', { conversationId, departmentId, agentId });
+
+    // 1. Check for open ticket
+    const { data: activeTicket, error: findError } = await supabase
+        .from('tickets')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .eq('status', 'open')
+        .single();
+
+    console.log('[TICKET] Query result:', { activeTicket, findError });
+
+    if (activeTicket) {
+        console.log('[TICKET] Found existing active ticket:', activeTicket.id);
+        return activeTicket;
+    }
+
+    // 2. Create new ticket if none exists
+    console.log('[TICKET] No active ticket found, creating new one');
+    const { data: newTicket, error } = await supabase
+        .from('tickets')
+        .insert({
+            conversation_id: conversationId,
+            status: 'open',
+            department_id: departmentId,
+            agent_id: agentId
+        })
+        .select()
+        .single();
+
+    if (error) {
+        console.error("[TICKET] Error creating ticket:", error);
+        return null;
+    }
+
+    console.log('[TICKET] Created new ticket:', newTicket.id);
+    return newTicket;
+}
+
+// Helper to save message to Supabase (Updated for Tickets)
+async function saveMessageToSupabase(conversationId, msg, ticketId = null) {
     try {
         const timestamp = new Date(msg.timestamp * 1000).toISOString();
+
+        // If no ticketId provided, try to find active one
+        if (!ticketId) {
+            const ticket = await getOrCreateActiveTicket(conversationId);
+            ticketId = ticket?.id;
+        }
 
         const { error } = await supabase
             .from('messages')
             .upsert({
                 conversation_id: conversationId,
+                ticket_id: ticketId, // Associate with ticket
                 message_id: msg.id._serialized,
                 from_me: msg.fromMe,
                 body: msg.body,
@@ -143,7 +191,7 @@ async function saveMessageToSupabase(conversationId, msg) {
                 .update({ last_message_at: timestamp })
                 .eq('id', conversationId);
 
-            // Emit to frontend for real-time update
+            // Emit to frontend
             const socketPayload = {
                 id: { _serialized: msg.id._serialized },
                 fromMe: msg.fromMe,
@@ -152,7 +200,8 @@ async function saveMessageToSupabase(conversationId, msg) {
                 hasMedia: msg.hasMedia,
                 type: msg.type,
                 from: msg.from || (msg.fromMe ? 'me' : null),
-                to: msg.to
+                to: msg.to,
+                ticketId: ticketId
             };
             io.emit('message', socketPayload);
         }
@@ -167,7 +216,7 @@ client.on("message", async (msg) => {
         const chat = await msg.getChat();
         if (chat.isGroup) return;
 
-        // 1. Get or Create Conversation to ensure we have UUID
+        // 1. Get or Create Conversation
         const { data: conversation } = await supabase
             .from('conversations')
             .upsert({
@@ -182,17 +231,19 @@ client.on("message", async (msg) => {
 
         if (!conversation) return;
 
-        // Save incoming message to Supabase
-        await saveMessageToSupabase(conversation.id, msg);
+        // 2. Ensure Ticket Exists
+        const ticket = await getOrCreateActiveTicket(conversation.id);
 
-        // 2. Check if already assigned (Human agent handling it)
-        const isAssigned = await hasActiveAssignment(conversation.id);
-        if (isAssigned) {
-            // If assigned, we DO NOT auto-reply. The agent handles it.
-            return;
+        // Save incoming message (linked to ticket)
+        await saveMessageToSupabase(conversation.id, msg, ticket?.id);
+
+        // 3. Check assignments/department (Legacy logic adapted for tickets)
+        // If ticket has agent_id, it is assigned.
+        if (ticket && ticket.agent_id) {
+            return; // Agent handles it
         }
 
-        // 3. Check for Department Selection (1-5)
+        // 4. Department Selection Logic
         const body = msg.body.trim();
         const menuOptions = ['Fiscal', 'Contábil', 'DP', 'Societário', 'Financeiro'];
         const selection = parseInt(body);
@@ -204,17 +255,56 @@ client.on("message", async (msg) => {
             if (deptId) {
                 await chat.sendStateTyping();
 
-                // Try to find an agent
-                const agentId = await findAvailableAgent(deptId);
+                // Update Ticket with Department
+                await supabase
+                    .from('tickets')
+                    .update({ department_id: deptId })
+                    .eq('id', ticket.id);
 
-                // Create Assignment (even if agentId is null - meaning "Queued")
-                await supabase.from('conversation_assignments').insert({
-                    conversation_id: conversation.id,
-                    agent_id: agentId, // If null, it's just in the department queue
-                    status: 'active'
-                });
+                // Find Agent - DISABLED AUTO ASSIGNMENT
+                // We want to keep it in the department queue visible to ALL agents of that department
+                // until someone picks it up.
+                const agentId = null; // await findAvailableAgent(deptId);
 
-                let replyMsg = `✅ Entendido! Transferindo para o setor *${selectedDeptName}*.`;
+                // Check if assignment already exists for this conversation
+                const { data: existingAssignment } = await supabase
+                    .from('conversation_assignments')
+                    .select('id')
+                    .eq('conversation_id', conversation.id)
+                    .order('assigned_at', { ascending: false })
+                    .limit(1)
+                    .single();
+
+                if (existingAssignment) {
+                    // Update existing assignment
+                    await supabase
+                        .from('conversation_assignments')
+                        .update({
+                            agent_id: agentId,
+                            department_id: deptId,
+                            status: 'active',
+                            assigned_at: new Date().toISOString()
+                        })
+                        .eq('id', existingAssignment.id);
+                } else {
+                    // Create new assignment
+                    await supabase.from('conversation_assignments').insert({
+                        conversation_id: conversation.id,
+                        agent_id: agentId,
+                        department_id: deptId,
+                        status: 'active'
+                    });
+                }
+
+                // Update Ticket with Agent if found
+                if (agentId) {
+                    await supabase
+                        .from('tickets')
+                        .update({ agent_id: agentId })
+                        .eq('id', ticket.id);
+                }
+
+                let replyMsg = `✅ Entendido! Ticket #${ticket.id.slice(0, 4)} iniciado para *${selectedDeptName}*.`;
                 if (!agentId) {
                     replyMsg += `\n\nTodos os nossos atendentes estão ocupados no momento, mas sua mensagem já está na fila.`;
                 } else {
@@ -222,33 +312,35 @@ client.on("message", async (msg) => {
                 }
 
                 const sentMsg1 = await client.sendMessage(msg.from, replyMsg);
-                await saveMessageToSupabase(conversation.id, sentMsg1);
+                await saveMessageToSupabase(conversation.id, sentMsg1, ticket.id);
                 return;
             }
         }
 
-        // 4. Greeting / Menu (For ANY other message if not assigned)
-        // This enforces department selection
-        await chat.sendStateTyping();
-        await new Promise(r => setTimeout(r, 1500));
+        // 5. Greeting / Menu (Only if no department assigned yet)
+        if (!ticket.department_id) {
+            await chat.sendStateTyping();
+            await new Promise(r => setTimeout(r, 1500));
 
-        const hora = new Date().getHours();
-        let saudacao = "Olá";
-        if (hora >= 5 && hora < 12) saudacao = "Bom dia";
-        else if (hora >= 12 && hora < 18) saudacao = "Boa tarde";
-        else saudacao = "Boa noite";
+            const hora = new Date().getHours();
+            let saudacao = "Olá";
+            if (hora >= 5 && hora < 12) saudacao = "Bom dia";
+            else if (hora >= 12 && hora < 18) saudacao = "Boa tarde";
+            else saudacao = "Boa noite";
 
-        const sentMsg2 = await client.sendMessage(
-            msg.from,
-            `${saudacao}! Bem-vindo à MWC Assessoria. 👋\n` +
-            `Para prosseguir, por favor escolha com qual departamento deseja falar:\n\n` +
-            `1. Fiscal\n` +
-            `2. Contábil\n` +
-            `3. DP\n` +
-            `4. Societário\n` +
-            `5. Financeiro`
-        );
-        await saveMessageToSupabase(conversation.id, sentMsg2);
+            const sentMsg2 = await client.sendMessage(
+                msg.from,
+                `${saudacao}! Bem-vindo à MWC Assessoria. 👋\n` +
+                `Atendimento #${ticket.id.slice(0, 4)}\n\n` +
+                `Para prosseguir, escolha o departamento:\n` +
+                `1. Fiscal\n` +
+                `2. Contábil\n` +
+                `3. DP\n` +
+                `4. Societário\n` +
+                `5. Financeiro`
+            );
+            await saveMessageToSupabase(conversation.id, sentMsg2, ticket.id);
+        }
     } catch (error) {
         console.error("Error processing message:", error);
     }
@@ -263,23 +355,39 @@ client.initialize();
 // Get all chats
 app.get('/api/chats', async (req, res) => {
     try {
-        // Fetch from Supabase to support persistence/offline
+        // Fetch from Supabase with active assignments
         const { data: conversations, error } = await supabase
             .from('conversations')
-            .select('*')
+            .select(`
+                    *,
+                    conversation_assignments (
+                        agent_id,
+                        status,
+                        agents (
+                            email
+                        )
+                    )
+                `)
             .order('last_message_at', { ascending: false });
 
         if (error) throw error;
 
         // Map to wwebjs format expected by frontend
-        const chats = conversations.map(c => ({
-            id: { _serialized: c.chat_id },
-            conversationId: c.id,
-            name: c.name,
-            isGroup: c.is_group,
-            unreadCount: c.unread_count,
-            timestamp: c.last_message_at ? new Date(c.last_message_at).getTime() / 1000 : 0
-        }));
+        const chats = conversations.map(c => {
+            // Find active assignment
+            const activeAssignment = c.conversation_assignments?.find(a => a.status === 'active');
+
+            return {
+                id: { _serialized: c.chat_id },
+                conversationId: c.id,
+                name: c.name,
+                isGroup: c.is_group,
+                unreadCount: c.unread_count,
+                timestamp: c.last_message_at ? new Date(c.last_message_at).getTime() / 1000 : 0,
+                agent_id: activeAssignment?.agent_id || null,
+                agent_email: activeAssignment?.agents?.email || null
+            };
+        });
 
         res.json(chats);
     } catch (error) {
@@ -291,6 +399,8 @@ app.get('/api/chats', async (req, res) => {
 // Get messages for a specific chat
 app.get('/api/messages/:chatId', async (req, res) => {
     try {
+        const { ticketId } = req.query;
+
         // 1. Try to get conversation from Supabase
         const { data: conversation } = await supabase
             .from('conversations')
@@ -299,13 +409,34 @@ app.get('/api/messages/:chatId', async (req, res) => {
             .single();
 
         if (conversation) {
-            // 2. Fetch messages from Supabase
-            const { data: messages } = await supabase
-                .from('messages')
-                .select('*')
-                .eq('conversation_id', conversation.id)
-                .order('timestamp', { ascending: true })
-                .limit(parseInt(req.query.limit) || 50);
+            let targetTicketId = ticketId;
+
+            // If no specific ticket requested, find the ACTIVE one
+            if (!targetTicketId) {
+                const { data: activeTicket } = await supabase
+                    .from('tickets')
+                    .select('id')
+                    .eq('conversation_id', conversation.id)
+                    .eq('status', 'open')
+                    .single();
+
+                if (activeTicket) {
+                    targetTicketId = activeTicket.id;
+                }
+            }
+
+            let messages = [];
+            if (targetTicketId) {
+                const { data: ticketMessages } = await supabase
+                    .from('messages')
+                    .select('*')
+                    .eq('ticket_id', targetTicketId)
+                    .order('timestamp', { ascending: true });
+                messages = ticketMessages || [];
+            } else {
+                // No active ticket = fresh start, return empty
+                messages = [];
+            }
 
             if (messages && messages.length > 0) {
                 const mappedMessages = messages.map(m => ({
@@ -316,7 +447,8 @@ app.get('/api/messages/:chatId', async (req, res) => {
                     hasMedia: m.has_media,
                     type: m.media_type,
                     from: m.from_me ? (client.info ? client.info.wid._serialized : 'me') : req.params.chatId,
-                    to: m.from_me ? req.params.chatId : (client.info ? client.info.wid._serialized : 'me')
+                    to: m.from_me ? req.params.chatId : (client.info ? client.info.wid._serialized : 'me'),
+                    ticketId: m.ticket_id // Include ticket ID
                 }));
                 return res.json(mappedMessages);
             }
@@ -395,10 +527,15 @@ app.get('/api/conversations/my-conversations', async (req, res) => {
             return res.status(400).json({ error: 'Agent email required' });
         }
 
-        // Get agent ID
+        // Get agent ID and their departments
         const { data: agent } = await supabase
             .from('agents')
-            .select('id')
+            .select(`
+                id,
+                agent_departments (
+                    department_id
+                )
+            `)
             .eq('email', agentEmail)
             .single();
 
@@ -406,14 +543,22 @@ app.get('/api/conversations/my-conversations', async (req, res) => {
             return res.status(404).json({ error: 'Agent not found' });
         }
 
-        // Get conversations assigned to this agent
-        const { data: assignments, error } = await supabase
-            .from('conversation_assignments')
+        console.log('[MY-CONVERSATIONS] Agent:', agent.id);
+
+        // Get department IDs
+        const departmentIds = agent.agent_departments?.map(ad => ad.department_id) || [];
+
+        // Build query using TICKETS table instead of assignments
+        // This allows showing multiple tickets (history) for the same conversation
+        let query = supabase
+            .from('tickets')
             .select(`
                 id,
                 status,
-                assigned_at,
-                conversation_id,
+                created_at,
+                closed_at,
+                agent_id,
+                department_id,
                 conversations (
                     id,
                     chat_id,
@@ -428,14 +573,47 @@ app.get('/api/conversations/my-conversations', async (req, res) => {
                     id,
                     name
                 )
-            `)
-            .eq('agent_id', agent.id)
-            .in('status', ['active', 'queued', 'closed'])
-            .order('assigned_at', { ascending: false });
+            `);
+
+        // Filter: 
+        // 1. Tickets assigned to ME (Open or Closed)
+        // 2. Tickets unassigned (Open) but in MY DEPARTMENTS (Queue)
+
+        let orFilter = `agent_id.eq.${agent.id}`;
+        if (departmentIds.length > 0) {
+            orFilter += `,and(agent_id.is.null,department_id.in.(${departmentIds.join(',')}),status.eq.open)`;
+        }
+
+        query = query.or(orFilter);
+
+        const { data: tickets, error } = await query
+            .order('created_at', { ascending: false });
 
         if (error) throw error;
 
-        res.json(assignments || []);
+        // Map tickets to the format expected by MyConversations.jsx
+        // We simulate the "assignment" structure so the frontend keeps working
+        const conversations = tickets.map(t => {
+            let status = 'active';
+            if (t.status === 'closed') status = 'closed';
+            else if (!t.agent_id) status = 'queued';
+
+            return {
+                id: t.id, // Use Ticket ID as the list key
+                status: status,
+                assigned_at: t.created_at, // Use ticket creation as assignment time
+                closed_at: t.closed_at,
+                conversation_id: t.conversations?.id,
+                agent_id: t.agent_id,
+                department_id: t.department_id,
+                conversations: t.conversations,
+                departments: t.departments
+            };
+        });
+
+        console.log('[MY-CONVERSATIONS] Tickets found:', conversations.length);
+
+        res.json(conversations);
     } catch (error) {
         console.error('Error fetching my conversations:', error);
         res.status(500).json({ error: 'Failed to fetch conversations' });
@@ -504,69 +682,182 @@ app.post('/api/conversations/:id/assign-to-me', async (req, res) => {
             return res.status(404).json({ error: 'Agent not found' });
         }
 
-        // Update assignment
-        const { data, error } = await supabase
+        // 1. Check for currently ACTIVE assignment (anyone)
+        const { data: activeAssignment } = await supabase
             .from('conversation_assignments')
-            .update({
-                agent_id: agent.id,
-                status: 'active',
-                assigned_at: new Date().toISOString()
-            })
+            .select('*')
             .eq('conversation_id', id)
-            .is('agent_id', null)
-            .select()
+            .eq('status', 'active')
             .single();
 
-        if (error) {
-            return res.status(400).json({ error: 'Conversation already assigned or not found' });
+        if (activeAssignment) {
+            // If already assigned to ME, we are good
+            if (activeAssignment.agent_id === agent.id) {
+                return res.json(activeAssignment);
+            }
+
+            // If assigned to SOMEONE ELSE, close/transfer their assignment first
+            // (Instead of changing agent_id, which might violate unique constraint if target agent has a row)
+            await supabase
+                .from('conversation_assignments')
+                .update({ status: 'transferred', closed_at: new Date().toISOString() })
+                .eq('id', activeAssignment.id);
         }
 
-        res.json(data);
+        // 2. Check if **I** have an existing assignment for this convo (active or closed)
+        const { data: myAssignment } = await supabase
+            .from('conversation_assignments')
+            .select('*')
+            .eq('conversation_id', id)
+            .eq('agent_id', agent.id)
+            .single();
+
+        let finalAssignment;
+
+        if (myAssignment) {
+            // Reactivate MY existing row
+            const { data, error } = await supabase
+                .from('conversation_assignments')
+                .update({
+                    status: 'active',
+                    assigned_at: new Date().toISOString(),
+                    closed_at: null
+                })
+                .eq('id', myAssignment.id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            finalAssignment = data;
+        } else {
+            // Create NEW assignment for me
+            const { data, error } = await supabase
+                .from('conversation_assignments')
+                .insert({
+                    conversation_id: id,
+                    agent_id: agent.id,
+                    status: 'active',
+                    assigned_at: new Date().toISOString()
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            finalAssignment = data;
+        }
+
+        // 3. Update the Ticket to point to me
+        const { data: activeTicket } = await supabase
+            .from('tickets')
+            .select('id')
+            .eq('conversation_id', id)
+            .eq('status', 'open')
+            .single();
+
+        if (activeTicket) {
+            await supabase
+                .from('tickets')
+                .update({ agent_id: agent.id })
+                .eq('id', activeTicket.id);
+        }
+
+        res.json(finalAssignment);
+
     } catch (error) {
         console.error('Error assigning conversation:', error);
-        res.status(500).json({ error: 'Failed to assign conversation' });
+        res.status(500).json({ error: 'Failed to assign conversation', details: error.message });
     }
 });
 
-// Close/finish conversation
+// Close/finish conversation (Close Ticket)
 app.post('/api/conversations/:id/close', async (req, res) => {
+    console.log('[CLOSE] Request received:', { conversationId: req.params.id, body: req.body });
     try {
         const { id } = req.params;
         const { agentEmail } = req.body;
 
         if (!agentEmail) {
+            console.log('[CLOSE] Missing agent email');
             return res.status(400).json({ error: 'Agent email required' });
         }
 
-        // Get agent ID
-        const { data: agent } = await supabase
-            .from('agents')
-            .select('id')
-            .eq('email', agentEmail)
+        // Get conversation details
+        const { data: conversation } = await supabase
+            .from('conversations')
+            .select('chat_id')
+            .eq('id', id)
             .single();
 
-        if (!agent) {
-            return res.status(404).json({ error: 'Agent not found' });
+        if (!conversation) {
+            return res.status(404).json({ error: 'Conversation not found' });
         }
 
-        // Update assignment status
-        const { data, error } = await supabase
+        // Get active ticket
+        console.log('[CLOSE] Looking for active ticket for conversation:', id);
+        const { data: ticket, error: ticketError } = await supabase
+            .from('tickets')
+            .select('id')
+            .eq('conversation_id', id)
+            .eq('status', 'open')
+            .single();
+
+        console.log('[CLOSE] Ticket query result:', { ticket, ticketError });
+
+        if (ticketError || !ticket) {
+            console.log('[CLOSE] No active ticket found');
+            return res.status(404).json({ error: 'No active ticket found to close' });
+        }
+
+        // Close ticket
+        console.log('[CLOSE] Closing ticket:', ticket.id);
+        const { error: closeError } = await supabase
+            .from('tickets')
+            .update({
+                status: 'closed',
+                closed_at: new Date().toISOString()
+            })
+            .eq('id', ticket.id);
+
+        if (closeError) {
+            console.error('[CLOSE] Error closing ticket:', closeError);
+            throw closeError;
+        }
+
+        // Close active assignments
+        console.log('[CLOSE] Closing assignments for conversation:', id);
+        await supabase
             .from('conversation_assignments')
             .update({
                 status: 'closed',
                 closed_at: new Date().toISOString()
             })
             .eq('conversation_id', id)
-            .eq('agent_id', agent.id)
-            .eq('status', 'active') // Only close active assignments
-            .select()
-            .single();
+            .eq('status', 'active');
 
-        if (error) throw error;
+        // Send closure message to WhatsApp
+        try {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const dateStr = now.toLocaleDateString('pt-BR');
 
-        res.json(data);
+            const closureMessage = `✓ *Atendimento Encerrado*\n\n` +
+                `Ticket #${ticket.id.slice(0, 8)}\n` +
+                `Encerrado em: ${dateStr} às ${timeStr}\n\n` +
+                `Obrigado por entrar em contato com a MWC Assessoria! 🙏`;
+
+            const sentMsg = await client.sendMessage(conversation.chat_id, closureMessage);
+
+            // Save closure message to database
+            await saveMessageToSupabase(id, sentMsg, ticket.id);
+        } catch (msgError) {
+            console.error('[CLOSE] Error sending closure message:', msgError);
+            // Don't fail the close operation if message fails
+        }
+
+        console.log('[CLOSE] Ticket closed successfully');
+        res.json({ message: 'Ticket closed successfully' });
     } catch (error) {
-        console.error('Error closing conversation:', error);
+        console.error('[CLOSE] Error closing conversation:', error);
         res.status(500).json({ error: 'Failed to close conversation' });
     }
 });
@@ -581,35 +872,97 @@ app.post('/api/conversations/:id/transfer', async (req, res) => {
             return res.status(400).json({ error: 'Agent email and target agent ID required' });
         }
 
-        // Get requesting agent ID
-        const { data: agent } = await supabase
+        // Get requesting agent (security check - ensure valid sender)
+        const { data: sender } = await supabase
             .from('agents')
             .select('id')
             .eq('email', agentEmail)
             .single();
 
-        if (!agent) {
+        if (!sender) {
             return res.status(404).json({ error: 'Requesting agent not found' });
         }
 
-        // Update assignment to new agent
-        const { data, error } = await supabase
+        // 1. Find CURRENT active assignment
+        const { data: currentAssignment } = await supabase
             .from('conversation_assignments')
-            .update({
-                agent_id: targetAgentId,
-                assigned_at: new Date().toISOString() // Update assignment time? Optional.
-            })
+            .select('*')
             .eq('conversation_id', id)
-            .eq('status', 'active') // Only transfer active assignments
-            .select()
+            .eq('status', 'active')
             .single();
 
-        if (error) throw error;
+        if (currentAssignment) {
+            // Close it (Transfer OUT)
+            await supabase
+                .from('conversation_assignments')
+                .update({
+                    status: 'transferred',
+                    closed_at: new Date().toISOString()
+                })
+                .eq('id', currentAssignment.id);
+        }
 
-        res.json(data);
+        // 2. Check if TARGET agent already has history
+        const { data: targetHistory } = await supabase
+            .from('conversation_assignments')
+            .select('*')
+            .eq('conversation_id', id)
+            .eq('agent_id', targetAgentId)
+            .single();
+
+        let newAssignment;
+
+        if (targetHistory) {
+            // Reactivate TARGET's existing row (Transfer IN)
+            const { data, error } = await supabase
+                .from('conversation_assignments')
+                .update({
+                    status: 'active',
+                    assigned_at: new Date().toISOString(),
+                    closed_at: null
+                })
+                .eq('id', targetHistory.id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            newAssignment = data;
+        } else {
+            // Create NEW assignment for TARGET
+            const { data, error } = await supabase
+                .from('conversation_assignments')
+                .insert({
+                    conversation_id: id,
+                    agent_id: targetAgentId,
+                    status: 'active',
+                    assigned_at: new Date().toISOString()
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            newAssignment = data;
+        }
+
+        // 3. Update the main Ticket
+        const { data: activeTicket } = await supabase
+            .from('tickets')
+            .select('id')
+            .eq('conversation_id', id)
+            .eq('status', 'open')
+            .single();
+
+        if (activeTicket) {
+            await supabase
+                .from('tickets')
+                .update({ agent_id: targetAgentId })
+                .eq('id', activeTicket.id);
+        }
+
+        res.json(newAssignment);
     } catch (error) {
         console.error('Error transferring conversation:', error);
-        res.status(500).json({ error: 'Failed to transfer conversation' });
+        res.status(500).json({ error: 'Failed to transfer conversation', details: error.message });
     }
 });
 
@@ -875,6 +1228,7 @@ app.get('/api/departments', async (req, res) => {
 // Login endpoint
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
+    console.log('[LOGIN ATTEMPT]', { email, password }); // DEBUG LOG
 
     try {
         // Check super user

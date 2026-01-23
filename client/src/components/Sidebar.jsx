@@ -1,7 +1,29 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { MessageSquare, Users, Settings, UserPlus, LogOut, LayoutDashboard, Inbox } from 'lucide-react';
+import axios from 'axios';
 
-const Sidebar = ({ status, onLogout, onNavigate, currentView }) => {
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+const Sidebar = ({ status, onLogout, onNavigate, currentView, currentUser }) => {
+    const [agentInfo, setAgentInfo] = useState(null);
+
+    useEffect(() => {
+        if (currentUser) {
+            fetchAgentInfo();
+        }
+    }, [currentUser]);
+
+    const fetchAgentInfo = async () => {
+        try {
+            const response = await axios.get(`${API_URL}/api/agents`);
+            const agent = response.data.find(a => a.email === currentUser);
+            if (agent) {
+                setAgentInfo(agent);
+            }
+        } catch (error) {
+            console.error('Error fetching agent info:', error);
+        }
+    };
     const getStatusColor = () => {
         switch (status) {
             case 'connected': return 'bg-green-500';
@@ -26,14 +48,28 @@ const Sidebar = ({ status, onLogout, onNavigate, currentView }) => {
             <div className="p-6">
                 <div className="flex items-center gap-3 mb-10">
                     <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-900/20">
-                        AD
+                        {agentInfo?.name?.charAt(0)?.toUpperCase() || 'AD'}
                     </div>
-                    <div>
-                        <h2 className="font-bold text-white leading-tight">Agent Dashboard</h2>
+                    <div className="flex-1 min-w-0">
+                        <h2 className="font-bold text-white leading-tight truncate">
+                            {agentInfo?.name || 'Agent Dashboard'}
+                        </h2>
                         <div className="flex items-center gap-2 mt-0.5">
                             <span className={`w-2 h-2 rounded-full ${getStatusColor()}`}></span>
                             <span className="text-xs text-gray-400 font-medium">{getStatusText()}</span>
                         </div>
+                        {agentInfo?.agent_departments && agentInfo.agent_departments.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                                {agentInfo.agent_departments.map((ad, idx) => (
+                                    <span
+                                        key={idx}
+                                        className="text-[10px] px-1.5 py-0.5 bg-blue-900/30 text-blue-300 rounded border border-blue-800/30"
+                                    >
+                                        {ad.departments?.name}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
 
