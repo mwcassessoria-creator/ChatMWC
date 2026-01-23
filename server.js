@@ -164,13 +164,17 @@ async function getOrCreateActiveTicket(conversationId, departmentId = null, agen
 
     // 2. Create new ticket if none exists
     console.log('[TICKET] No active ticket found, creating new one');
+
+    // If agentId is provided (e.g. from Start Chat), status remains 'open' but assigned
+    // We can interpret this as "Active Assignment" in the UI logic because agent_id is present.
+
     const { data: newTicket, error } = await supabase
         .from('tickets')
         .insert({
             conversation_id: conversationId,
             status: 'open',
             department_id: departmentId,
-            agent_id: agentId
+            agent_id: agentId // Auto-assign if agent initiated
         })
         .select()
         .single();
@@ -185,13 +189,14 @@ async function getOrCreateActiveTicket(conversationId, departmentId = null, agen
 }
 
 // Helper to save message to Supabase (Updated for Tickets)
-async function saveMessageToSupabase(conversationId, msg, ticketId = null) {
+async function saveMessageToSupabase(conversationId, msg, ticketId = null, agentId = null) {
     try {
         const timestamp = new Date(msg.timestamp * 1000).toISOString();
 
-        // If no ticketId provided, try to find active one
+        // If no ticketId provided, try to find active one or create new one (assigned to agent if provided)
         if (!ticketId) {
-            const ticket = await getOrCreateActiveTicket(conversationId);
+            // Pass agentId to auto-assign if this is the first message
+            const ticket = await getOrCreateActiveTicket(conversationId, null, agentId);
             ticketId = ticket?.id;
         }
 
@@ -520,16 +525,21 @@ app.post('/api/send', async (req, res) => {
     try {
         let messageToSend = message;
 
-        // If agent email is provided, try to find the name and prepend it
+        let agentId = null;
+
+        // If agent email is provided, try to find the name and prepend it, AND get ID
         if (agentEmail) {
             const { data: agent } = await supabase
                 .from('agents')
-                .select('name')
+                .select('id, name')
                 .eq('email', agentEmail)
                 .single();
 
-            if (agent && agent.name) {
-                messageToSend = `*${agent.name}:*\n${message}`;
+            if (agent) {
+                agentId = agent.id;
+                if (agent.name) {
+                    messageToSend = `*${agent.name}:*\n${message}`;
+                }
             }
         }
 
@@ -560,7 +570,7 @@ app.post('/api/send', async (req, res) => {
             .single();
 
         if (conversation) {
-            await saveMessageToSupabase(conversation.id, response);
+            await saveMessageToSupabase(conversation.id, response, null, agentId);
         }
 
         res.json(response);
