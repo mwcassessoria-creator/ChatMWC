@@ -10,6 +10,7 @@ import AgentRegistration from './components/AgentRegistration';
 import AgentsView from './components/AgentsView';
 import MyConversations from './components/MyConversations';
 import DepartmentView from './components/DepartmentView';
+import ClientsView from './components/ClientsView';
 import io from 'socket.io-client';
 import axios from 'axios';
 
@@ -282,6 +283,34 @@ function App() {
 
             {currentView === 'agents' ? (
                 <AgentsView />
+            ) : currentView === 'clients' ? (
+                <ClientsView
+                    onStartChat={(chatId, conversationId) => {
+                        // Switch view and open chat
+                        setCurrentView('my-conversations');
+
+                        // Construct chat object
+                        // We might need to fetch full details or rely on existing chats
+                        const chat = chats.find(c => c.id._serialized === chatId);
+
+                        if (chat) {
+                            setActiveChat({
+                                ...chat,
+                                conversationId
+                            });
+                        } else {
+                            // Fallback if not in current list (rare if refreshed)
+                            setActiveChat({
+                                id: { _serialized: chatId },
+                                conversationId,
+                                name: 'Carregando...', // Will update on refresh
+                                unreadCount: 0
+                            });
+                            // Force refresh to get details
+                            fetchChats();
+                        }
+                    }}
+                />
             ) : currentView === 'my-conversations' ? (
                 <div className="flex flex-1 overflow-hidden">
                     <MyConversations

@@ -1361,6 +1361,89 @@ app.post('/api/agents/set-password', async (req, res) => {
     }
 });
 
+// =====================================
+// CLIENT ROUTES
+// =====================================
+
+// Get all clients (conversations)
+app.get('/api/clients', async (req, res) => {
+    try {
+        const { search } = req.query;
+        let query = supabase
+            .from('conversations')
+            .select('*')
+            .order('name', { ascending: true });
+
+        if (search) {
+            query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%`);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        res.json(data);
+    } catch (error) {
+        console.error('Error fetching clients:', error);
+        res.status(500).json({ error: 'Failed to fetch clients' });
+    }
+});
+
+// Create new client
+app.post('/api/clients', async (req, res) => {
+    try {
+        const { name, phone, company } = req.body;
+
+        if (!name || !phone) {
+            return res.status(400).json({ error: 'Name and phone are required' });
+        }
+
+        // Format phone to 55 + number
+        const cleanPhone = phone.replace(/\D/g, '');
+        const formattedPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+        const chatId = `${formattedPhone}@c.us`;
+
+        // Check if exists
+        const { data: existing } = await supabase
+            .from('conversations')
+            .select('*')
+            .eq('chat_id', chatId)
+            .single();
+
+        if (existing) {
+            // Update if exists
+            const { data, error } = await supabase
+                .from('conversations')
+                .update({ name, company })
+                .eq('id', existing.id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            return res.json(data);
+        }
+
+        // Create if new
+        const { data, error } = await supabase
+            .from('conversations')
+            .insert({
+                name,
+                phone: formattedPhone,
+                company,
+                chat_id: chatId,
+                is_group: false
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json(data);
+
+    } catch (error) {
+        console.error('Error creating client:', error);
+        res.status(500).json({ error: 'Failed to create client' });
+    }
+});
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

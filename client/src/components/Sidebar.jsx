@@ -92,6 +92,12 @@ const Sidebar = ({ status, onLogout, onNavigate, currentView, currentUser }) => 
                     />
                     <NavItem
                         icon={<Users size={20} />}
+                        label="Clientes"
+                        onClick={() => onNavigate?.('clients')}
+                        active={currentView === 'clients'}
+                    />
+                    <NavItem
+                        icon={<Users size={20} />}
                         label="Atendentes"
                         onClick={() => onNavigate?.('agents')}
                         active={currentView === 'agents'}
