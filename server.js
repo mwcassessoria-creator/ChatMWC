@@ -15,16 +15,33 @@ const supabase = createClient(
 
 const app = express();
 const server = http.createServer(app);
+const allowedOrigins = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://chat-mwc.vercel.app",
+    "https://chat-mwc.vercel.app/"
+];
+
 const io = new Server(server, {
     cors: {
-        origin: "*", // Temporarily allow all for debugging
+        origin: allowedOrigins,
         methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         credentials: true
     }
 });
 
 app.use(cors({
-    origin: "*" // Temporarily allow all for debugging
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) === -1 && !origin.includes('ngrok')) {
+            // Optional: stricter check, but for now allow ngrok too if dynamic
+            // return callback(new Error('The CORS policy for this site does not allow access from the specified Origin.'), false);
+            return callback(null, true); // Fallback: allow for testing
+        }
+        return callback(null, true);
+    },
+    credentials: true
 }));
 app.use(express.json());
 
