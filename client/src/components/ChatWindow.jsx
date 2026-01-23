@@ -239,7 +239,7 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
                     // Pass sanitized "Upsert" object. No ID means "Create/Upsert" logic in Modal.
                     name: chat.name,
                     company: chat.company,
-                    phone: chat.phone || (typeof chat.id === 'string' && chat.id.includes('@') ? chat.id.split('@')[0] : chat.id)
+                    phone: chat.phone || (chat.id && chat.id._serialized ? chat.id._serialized.split('@')[0] : (typeof chat.id === 'string' ? chat.id.split('@')[0] : ''))
                 }}
                 onSuccess={() => {
                     if (onChatUpdated) onChatUpdated();

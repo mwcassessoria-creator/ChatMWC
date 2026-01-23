@@ -493,7 +493,16 @@ app.get('/api/messages/:chatId', async (req, res) => {
 
     } catch (error) {
         console.error("Error fetching messages:", error);
-        res.status(500).json({ error: 'Failed to fetch messages' });
+        // Enhanced logging
+        if (error.response) {
+            console.error("Error response data:", error.response.data);
+            console.error("Error response status:", error.response.status);
+        } else if (error.stack) {
+            console.error("Error stack:", error.stack);
+        }
+
+        // Return a cleaner error to frontend to avoid generic "Server Error"
+        res.status(500).json({ error: 'Failed to fetch messages', details: error.message });
     }
 });
 
