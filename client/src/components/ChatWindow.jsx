@@ -146,29 +146,10 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
                         {chat.name?.charAt(0) || '?'}
                     </div>
                     <div className="flex-1">
-                        {isEditingDetails ? (
-                            <div className="absolute top-16 left-4 z-50 bg-white p-4 rounded-xl shadow-2xl border border-gray-200 w-80 flex flex-col gap-3">
-                                <h3 className="font-bold">Editar Dados</h3>
-                                <input value={editedName} onChange={e => setEditedName(e.target.value)} className="border p-2 rounded" placeholder="Nome" />
-                                <input value={editedPhone} onChange={e => setEditedPhone(e.target.value)} className="border p-2 rounded" placeholder="Telefone" />
-                                <input value={editedCompany} onChange={e => setEditedCompany(e.target.value)} className="border p-2 rounded" placeholder="Empresa" />
-                                <select value={editedPriority} onChange={e => setEditedPriority(e.target.value)} className="border p-2 rounded">
-                                    <option value="low">Baixa</option>
-                                    <option value="normal">Normal</option>
-                                    <option value="high">Alta</option>
-                                    <option value="urgent">Urgente</option>
-                                </select>
-                                <div className="flex gap-2">
-                                    <button onClick={() => setIsEditingDetails(false)} className="px-3 py-2 bg-gray-100 rounded">Cancelar</button>
-                                    <button onClick={handleSaveDetails} className="px-3 py-2 bg-blue-600 text-white rounded">Salvar</button>
-                                </div>
-                            </div>
-                        ) : (
-                            <div>
-                                <h2 className="font-bold text-lg">{chat.name}</h2>
-                                {chat.company && <span className="bg-gray-100 text-xs px-2 py-0.5 rounded">{chat.company}</span>}
-                            </div>
-                        )}
+                        <div>
+                            <h2 className="font-bold text-lg">{chat.name}</h2>
+                            {chat.company && <span className="bg-gray-100 text-xs px-2 py-0.5 rounded">{chat.company}</span>}
+                        </div>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
