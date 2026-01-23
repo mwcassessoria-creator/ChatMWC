@@ -216,15 +216,19 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
             {/* Input Area */}
             <div className="bg-white p-4 border-t border-gray-200 relative">
                 {showEmojiPicker && (
-                    <div className="absolute bottom-20 left-4 z-50">
-                        <EmojiPicker
-                            onEmojiClick={(emojiData) => setInputText(prev => prev + emojiData.emoji)}
-                            width={300}
-                            height={400}
-                        />
-                        {/* Close backdrop */}
+                    <>
                         <div className="fixed inset-0 z-40" onClick={() => setShowEmojiPicker(false)}></div>
-                    </div>
+                        <div className="absolute bottom-20 left-4 z-50">
+                            <EmojiPicker
+                                onEmojiClick={(emojiData) => {
+                                    setInputText(prev => prev + emojiData.emoji);
+                                    setShowEmojiPicker(false);
+                                }}
+                                width={300}
+                                height={400}
+                            />
+                        </div>
+                    </>
                 )}
 
                 {assignedToOther ? (
