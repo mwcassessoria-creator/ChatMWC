@@ -248,17 +248,56 @@ client.on("message", async (msg) => {
         if (chat.isGroup) return;
 
         // 1. Get or Create Conversation
+        // 1. Unified Client & Conversation Logic
         const contact = await msg.getContact();
         const realPhone = contact.number || chat.id.user;
-        // Prefer address book name (contact.name) > pushname > chat name > phone
-        const formattedName = contact.name || contact.pushname || chat.name || `+${realPhone}`;
+        // Clean phone for strict matching (remove @c.us etc is already done by taking number/user, just ensure clean digits)
+        const cleanPhone = realPhone.replace(/\D/g, '');
 
+        // Prefer address book name > contact name > pushname > formatted phone
+        const formattedName = contact.name || contact.pushname || `+${cleanPhone}`;
+
+        // A. Get or Create CUSTOMER (Single Source of Truth)
+        let customerId = null;
+
+        // Try to find by unique phone
+        const { data: existingCustomer } = await supabase
+            .from('customers')
+            .select('id, name')
+            .eq('phone', cleanPhone)
+            .single();
+
+        if (existingCustomer) {
+            customerId = existingCustomer.id;
+        } else {
+            // Create New Customer
+            const { data: newCustomer, error: createCustError } = await supabase
+                .from('customers')
+                .insert({
+                    name: formattedName,
+                    phone: cleanPhone,
+                    // created_at defaults to NOW()
+                })
+                .select()
+                .single();
+
+            if (createCustError) {
+                console.error("Error creating customer from WhatsApp:", createCustError);
+                // Fallback: try to proceed without linking (should ideally not happen) or handle duplication race condition
+            } else {
+                customerId = newCustomer.id;
+                console.log(`[NEW CLIENT] Created customer: ${formattedName} (${cleanPhone})`);
+            }
+        }
+
+        // B. Get or Create CONVERSATION (Linked to Customer)
         const { data: conversation } = await supabase
             .from('conversations')
             .upsert({
-                chat_id: chat.id._serialized,
-                name: formattedName,
-                phone: realPhone,
+                chat_id: chat.id._serialized, // The technical ID
+                customer_id: customerId,      // The unified link
+                name: formattedName,          // Cache name for display
+                phone: cleanPhone,            // Cache phone for display
                 is_group: chat.isGroup,
                 last_message_at: new Date(msg.timestamp * 1000).toISOString()
             }, { onConflict: 'chat_id' })
@@ -1530,110 +1569,60 @@ app.get('/api/clients_legacy', async (req, res) => {
 
 // Create new client (customers table)
 // Create new client (customers table) AND Conversation
+// Create new client (customers table) (UNIFIED FLOW)
 app.post('/api/clients', async (req, res) => {
     try {
         const { name, phone, company } = req.body;
 
         if (!name || !phone) {
-            return res.status(400).json({ error: 'Name and request phone are required' });
+            return res.status(400).json({ error: 'Name and phone are required' });
         }
 
-        // 1. Format Phone
+        // 1. Format Phone (Standardization)
         const cleanPhone = phone.replace(/\D/g, '');
-        // Default to Brazil (55) if missing, though ideally UI sends full number. 
-        // Simple heuristic: if length <= 11 (10 or 11 digits with DDD), add 55.
-        const formattedPhone = (cleanPhone.length <= 11) ? `55${cleanPhone}` : cleanPhone;
-        const chatId = `${formattedPhone}@c.us`;
+        // Default to Brazil (55) if missing 
+        const formattedPhone = (cleanPhone.length >= 10 && cleanPhone.length <= 11) ? `55${cleanPhone}` : cleanPhone;
 
-        // 2. Insert/Upsert Customer
-        // logic: Phone must be unique in customers. If exists, we return error or upsert?
-        // UI says "New Client", typically implies create. But let's fail if exists to warn user.
-        // OR better: Upsert to update name/company?
-        // Requirements say "cadastrei" (registered).
-
-        // Let's first try to find if customer exists
-        const { data: existingCustomer } = await supabase
+        // 2. Insert Customer (Unique Constraint will assume checking)
+        const { data, error } = await supabase
             .from('customers')
-            .select('id')
-            .eq('phone', formattedPhone)
+            .insert({
+                name,
+                phone: formattedPhone,
+                company,
+                updated_at: new Date()
+            })
+            .select()
             .single();
 
-        let customerData;
-
-        if (existingCustomer) {
-            // Update existing?
-            // For now, let's just update the name/company
-            const { data, error } = await supabase
-                .from('customers')
-                .update({ name, company, updated_at: new Date() })
-                .eq('id', existingCustomer.id)
-                .select()
-                .single();
-            if (error) throw error;
-            customerData = data;
-        } else {
-            // Create new
-            const { data, error } = await supabase
-                .from('customers')
-                .insert([{ name, phone: formattedPhone, company }])
-                .select()
-                .single();
-            if (error) throw error;
-            customerData = data;
+        if (error) {
+            if (error.code === '23505') { // Postgres Unique Violation
+                return res.status(409).json({ error: 'Um cliente com este telefone já existe.' });
+            }
+            throw error;
         }
 
-        // 3. Ensure Conversation Exists (Sync)
-        const { data: existingConv } = await supabase
-            .from('conversations')
-            .select('id')
-            .eq('chat_id', chatId)
-            .single();
-
-        if (existingConv) {
-            // Update details
-            await supabase
-                .from('conversations')
-                .update({ name, company }) // Keep phone in sync?
-                .eq('id', existingConv.id);
-        } else {
-            // Create Conversation
-            await supabase
-                .from('conversations')
-                .insert({
-                    chat_id: chatId,
-                    name: name,
-                    phone: formattedPhone,
-                    company: company,
-                    is_group: false,
-                    updated_at: new Date()
-                });
-        }
-
-        // Return customer data WITH chat_id
-        res.json({
-            ...customerData,
-            chat_id: chatId
-        });
+        res.json(data);
 
     } catch (error) {
         console.error('Error creating client:', error);
-        res.status(500).json({ error: 'Failed to create client' });
+        res.status(500).json({ error: 'Failed to create client', details: error.message });
     }
 });
 
 // Update client (customers table) + Sync Conversations
 // Update client (customers table) + Sync Conversations
+// Update client (customers table)
 app.put('/api/clients/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { name, phone, company } = req.body;
 
-        let updates = { name, company, updated_at: new Date() };
-        let formattedPhone = null;
+        const updates = { name, company, updated_at: new Date() };
 
         if (phone) {
             const cleanPhone = phone.replace(/\D/g, '');
-            formattedPhone = (cleanPhone.length <= 11) ? `55${cleanPhone}` : cleanPhone;
+            const formattedPhone = (cleanPhone.length >= 10 && cleanPhone.length <= 11) ? `55${cleanPhone}` : cleanPhone;
             updates.phone = formattedPhone;
         }
 
@@ -1644,58 +1633,13 @@ app.put('/api/clients/:id', async (req, res) => {
             .select()
             .single();
 
-        if (error) throw error;
-
-        // Sync Conversation
-        // If phone changed, we need to update conversation phone AND chat_id potentially?
-        // Changing phone on WA is tricky. Usually chat_id changes.
-        // For now preventing phone change on conversation might be safer OR we update it if we are sure.
-        // Let's assume we update name/company. If phone changed, we update conversation phone/chat_id too.
-
-        if (formattedPhone) {
-            const newChatId = `${formattedPhone}@c.us`;
-            // Find conversation by OLD phone or NEW phone? 
-            // We don't know old phone easily here without another query.
-            // Let's update by phone if it matches? No, that relies on sync.
-
-            // Let's try to update conversation that matches the NEW phone (if user corrected a number)
-            // OR matches the OLD phone (if we knew it).
-
-            // Simplest: Update conversation where phone = formattedPhone (if exists) with new name/company
-            // AND try to find conversation by `chat_id = newChatId` and update it.
-
-            await supabase
-                .from('conversations')
-                .upsert({
-                    chat_id: newChatId,
-                    name: name,
-                    phone: formattedPhone,
-                    company: company,
-                    is_group: false
-                }, { onConflict: 'chat_id' });
-        } else {
-            // Phone didn't change (or not provided in update), just update name/company by current customer phone lookup?
-            // Since we didn't fetch customer phone, we might miss syncing conversation if we don't have it.
-            // Ideally frontend sends phone.
-            // If phone is missing in body, we skip conversation sync for now? 
-            // Or we should rely on fetching the customer first.
-
-            // Let's fetch the customer to get the phone if not provided
-            // But 'data' (from update) has the phone!
-            if (data.phone) {
-                await supabase
-                    .from('conversations')
-                    .update({ name, company })
-                    .eq('phone', data.phone);
+        if (error) {
+            if (error.code === '23505') {
+                return res.status(409).json({ error: 'Já existe outro cliente com este telefone.' });
             }
+            throw error;
         }
-
-        // Return with chat_id
-        res.json({
-            ...data,
-            chat_id: data.phone ? `${data.phone}@c.us` : null
-        });
-
+        res.json(data);
     } catch (error) {
         console.error('Error updating client:', error);
         res.status(500).json({ error: 'Failed to update client' });
