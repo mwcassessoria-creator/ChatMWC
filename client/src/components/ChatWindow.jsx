@@ -235,9 +235,14 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
             <ClientEditModal
                 isOpen={showEditModal}
                 onClose={() => setShowEditModal(false)}
-                client={chat} // Pass the chat object as client (it has name, id, company)
+                client={{
+                    // Pass sanitized "Upsert" object. No ID means "Create/Upsert" logic in Modal.
+                    name: chat.name,
+                    company: chat.company,
+                    phone: chat.phone || (typeof chat.id === 'string' && chat.id.includes('@') ? chat.id.split('@')[0] : chat.id)
+                }}
                 onSuccess={() => {
-                    if (onChatUpdated) onChatUpdated(); // Update Side/List
+                    if (onChatUpdated) onChatUpdated();
                 }}
             />
         </div>
