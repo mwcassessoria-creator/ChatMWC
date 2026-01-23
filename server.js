@@ -1444,6 +1444,68 @@ app.post('/api/clients', async (req, res) => {
     }
 });
 
+// Update client
+app.put('/api/clients/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, phone, company } = req.body;
+
+        const updates = { name, company };
+
+        if (phone) {
+            const cleanPhone = phone.replace(/\D/g, '');
+            updates.phone = cleanPhone;
+            updates.chat_id = `${cleanPhone}@c.us`;
+        }
+
+        const { data, error } = await supabase
+            .from('conversations')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json(data);
+    } catch (error) {
+        console.error('Error updating client:', error);
+        res.status(500).json({ error: 'Failed to update client' });
+    }
+});
+
+// Get client ticket history
+app.get('/api/clients/:chatId/history', async (req, res) => {
+    try {
+        const { chatId } = req.params;
+
+        // Find conversation first
+        const { data: conversation } = await supabase
+            .from('conversations')
+            .select('id')
+            .eq('chat_id', chatId)
+            .single();
+
+        if (!conversation) return res.json([]);
+
+        // Get tickets
+        const { data: tickets, error } = await supabase
+            .from('tickets')
+            .select(`
+                *,
+                agents (name, email),
+                departments (name)
+            `)
+            .eq('conversation_id', conversation.id)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        res.json(tickets);
+    } catch (error) {
+        console.error('Error fetching history:', error);
+        res.status(500).json({ error: 'Failed to fetch history' });
+    }
+});
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
