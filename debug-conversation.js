@@ -35,7 +35,8 @@ async function checkConversation() {
     if (!conversation) {
         console.log('❌ NO CONVERSATION FOUND.');
     } else {
-        console.log('✅ Conversation found:', conversation);
+        console.log('✅ Conversation found (Keys):', Object.keys(conversation));
+        console.log('✅ Conversation found (Full):', conversation);
     }
 }
 

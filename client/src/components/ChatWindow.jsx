@@ -210,7 +210,7 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
                             onKeyDown={handleKeyDown}
                             placeholder="Digite uma mensagem..."
                             className="flex-1 border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:border-blue-500"
-                            disabled={!hasActiveTicket && !isUnassigned}
+                            disabled={false}
                         />
                         <button
                             type="submit"
