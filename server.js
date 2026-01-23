@@ -1452,23 +1452,81 @@ app.get('/api/clients_legacy', async (req, res) => {
     }
 });
 
-// Soft delete client (Using Name Prefix '[DELETED]' as ultimate fallback)
+// Create new client (customers table)
+app.post('/api/clients', async (req, res) => {
+    try {
+        const { name, phone, company } = req.body;
+
+        // Basic validation
+        if (!name || !phone) return res.status(400).json({ error: 'Name and Phone are required' });
+
+        const { data, error } = await supabase
+            .from('customers')
+            .insert([{ name, phone, company }])
+            .select()
+            .single();
+
+        if (error) {
+            if (error.code === '23505') return res.status(400).json({ error: 'Client with this phone already exists' });
+            throw error;
+        }
+
+        // OPTIONAL: Sync to conversations if needed? Not strictly for Create, only if conversation already exists.
+        // Let's do it just in case there's an orphaned conversation.
+        await supabase
+            .from('conversations')
+            .update({ name, company })
+            .eq('phone', phone);
+
+        res.json(data);
+    } catch (error) {
+        console.error('Error creating client:', error);
+        res.status(500).json({ error: 'Failed to create client' });
+    }
+});
+
+// Update client (customers table) + Sync Conversations
+app.put('/api/clients/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, phone, company } = req.body;
+
+        const { data, error } = await supabase
+            .from('customers')
+            .update({ name, phone, company, updated_at: new Date() })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        // CRITICAL SYNC: Update name/company in conversations table where phone matches
+        // This ensures the Chat Window reflects the change immediately without complex joins
+        if (phone) {
+            const { error: syncError } = await supabase
+                .from('conversations')
+                .update({ name, company })
+                .eq('phone', phone);
+            if (syncError) console.warn('[Sync] Failed to sync conversation names:', syncError);
+        }
+
+        res.json(data);
+    } catch (error) {
+        console.error('Error updating client:', error);
+        res.status(500).json({ error: 'Failed to update client' });
+    }
+});
+
+// Delete client (customers table)
 app.delete('/api/clients/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
-        // First get the current name to append prefix
-        const { data: current, error: fetchError } = await supabase
-            .from('conversations')
-            .select('name')
-            .eq('id', id)
-            .single();
-
-        if (fetchError) throw fetchError;
-
+        // Just delete from customers. Conversations stay as "History" but lose the "Registered" link logic potentially.
+        // Or we could leave them.
         const { error } = await supabase
-            .from('conversations')
-            .update({ name: `[DELETED] ${current.name}` })
+            .from('customers')
+            .delete()
             .eq('id', id);
 
         if (error) throw error;
