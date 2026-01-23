@@ -1370,8 +1370,40 @@ app.post('/api/agents/set-password', async (req, res) => {
 // CLIENT ROUTES
 // =====================================
 
-// Get all clients (conversations)
+// Get all clients (conversations) - New Implementation (Priority-based Soft Delete)
 app.get('/api/clients', async (req, res) => {
+    try {
+        const { search } = req.query;
+
+        // Use priority='deleted' to soft-delete
+        let query = supabase
+            .from('conversations')
+            .select('*')
+            .neq('priority', 'deleted')
+            .order('name', { ascending: true });
+
+        if (search) {
+            query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%`);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            console.warn('[Clients API] Priority filter failed, falling back to legacy fetch...', error.message);
+            // Fallback to fetch all
+            const fallback = await supabase.from('conversations').select('*').order('name');
+            return res.json(fallback.data || []);
+        }
+
+        res.json(data);
+    } catch (error) {
+        console.error('[Clients API] Error fetching clients:', error);
+        res.status(500).json({ error: 'Failed to fetch clients' });
+    }
+});
+
+// Get all clients (conversations)
+app.get('/api/clients_legacy', async (req, res) => {
     const { search } = req.query;
 
     // Strategy: Try with 'status' filter first. If it fails (column missing), fall back to no filter.
@@ -1420,14 +1452,14 @@ app.get('/api/clients', async (req, res) => {
     }
 });
 
-// Soft delete client
+// Soft delete client (Using priority='deleted' as workaround for missing status column)
 app.delete('/api/clients/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
         const { error } = await supabase
             .from('conversations')
-            .update({ status: 'deleted' })
+            .update({ priority: 'deleted' }) // Changed from status to priority
             .eq('id', id);
 
         if (error) throw error;
