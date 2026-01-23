@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send, Phone, Video, MoreVertical, Paperclip, Smile, XCircle, Edit2, Save, Building, ArrowRightLeft } from 'lucide-react';
 import axios from 'axios';
 import TransferModal from './TransferModal';
+import ClientEditModal from './ClientEditModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -9,11 +10,7 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
     const [inputText, setInputText] = useState('');
     const [isClosing, setIsClosing] = useState(false);
     const [showTransferModal, setShowTransferModal] = useState(false);
-    const [isEditingDetails, setIsEditingDetails] = useState(false);
-    const [editedName, setEditedName] = useState('');
-    const [editedCompany, setEditedCompany] = useState('');
-    const [editedPhone, setEditedPhone] = useState('');
-    const [editedPriority, setEditedPriority] = useState('normal');
+    // Removed inline edit states
     const [hasActiveTicket, setHasActiveTicket] = useState(true);
     const messagesEndRef = useRef(null);
     const [initialShowTransferModal, setInitialShowTransferModal] = useState(false);
@@ -39,17 +36,12 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
 
     useEffect(() => {
         if (chat) {
-            setEditedName(chat.name || '');
-            setEditedCompany(chat.company || '');
-
-            const phone = typeof chat.id === 'string' ? chat.id.split('@')[0] : chat.id?.user?.split('@')[0] || '';
-            setEditedPhone(phone);
-            setEditedPriority(chat.priority || 'normal');
-            setIsEditingDetails(false);
-
             checkActiveTicket();
         }
     }, [chat, messages]);
+
+    // Client Edit Modal
+    const [showEditModal, setShowEditModal] = useState(false);
 
     const checkActiveTicket = async () => {
         const hasTicketMessages = messages && messages.length > 0 && messages.some(m => m.ticketId);
@@ -125,29 +117,7 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
         }
     };
 
-    const handleSaveDetails = async () => {
-        if (!chat.conversationId) return;
-        try {
-            await axios.put(`${API_URL}/api/conversations/${chat.conversationId}/details`, {
-                name: editedName,
-                company: editedCompany,
-                phone: editedPhone,
-                priority: editedPriority
-            });
-            chat.name = editedName;
-            chat.company = editedCompany;
-            chat.priority = editedPriority;
-            // Phone update logic omitted for brevity as it's complex to update ID live
-            chat.priority = editedPriority;
-            // Phone update logic omitted for brevity as it's complex to update ID live
-            setIsEditingDetails(false);
-            if (onChatUpdated) onChatUpdated();
-            alert('Dados atualizados!');
-        } catch (error) {
-            console.error('Error updating details:', error);
-            alert('Erro ao atualizar dados.');
-        }
-    };
+    // handleSaveDetails removed (replaced by ClientEditModal)
 
     // Message Component
     const Message = ({ isMe, name, time, text }) => (
@@ -202,7 +172,9 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button onClick={() => setIsEditingDetails(true)} className="p-2 bg-gray-100 rounded-full"><Edit2 size={18} /></button>
+                    <button onClick={() => setShowEditModal(true)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition">
+                        <Edit2 size={18} />
+                    </button>
                     <button onClick={() => setShowTransferModal(true)} className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg flex items-center gap-2">
                         <ArrowRightLeft size={18} /> Transferir
                     </button>
@@ -278,8 +250,18 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
                     currentAgentEmail={currentUser}
                 />
             )}
+
+            <ClientEditModal
+                isOpen={showEditModal}
+                onClose={() => setShowEditModal(false)}
+                client={chat} // Pass the chat object as client (it has name, id, company)
+                onSuccess={() => {
+                    if (onChatUpdated) onChatUpdated(); // Update Side/List
+                }}
+            />
         </div>
     );
 };
+
 
 export default ChatWindow;

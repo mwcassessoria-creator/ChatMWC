@@ -92,37 +92,16 @@ function ClientsView({ onStartChat }) {
     // ... (Modal handlers logic same as before) ...
     const handleOpenCreate = () => {
         setEditingClient(null);
-        setFormData({ name: '', phone: '', company: '' });
         setShowModal(true);
     };
 
     const handleOpenEdit = (client) => {
         setEditingClient(client);
-        setFormData({
-            name: client.name || '',
-            phone: client.phone || '',
-            company: client.company || ''
-        });
         setShowModal(true);
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setSubmitting(true);
-        try {
-            if (editingClient) {
-                await axios.put(`${API_URL}/api/clients/${editingClient.id}`, formData);
-            } else {
-                await axios.post(`${API_URL}/api/clients`, formData);
-            }
-            setShowModal(false);
-            fetchClients(searchTerm);
-        } catch (error) {
-            console.error('Error saving client:', error);
-            alert('Erro ao salvar cliente');
-        } finally {
-            setSubmitting(false);
-        }
+    const handleModalSuccess = () => {
+        fetchClients(searchTerm); // Refresh list
     };
 
     const formatDate = (dateString) => {
@@ -329,38 +308,13 @@ function ClientsView({ onStartChat }) {
                 </div>
             )}
 
-            {/* Modal Reused (Same as before) */}
-            {showModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                            <h2 className="text-xl font-bold text-gray-900">
-                                {editingClient ? 'Editar Cliente' : 'Novo Cliente'}
-                            </h2>
-                            <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
-                        </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            {/* ... inputs same as before ... */}
-                            <div>
-                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">Nome *</label>
-                                <input required type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-2 border rounded-xl" />
-                            </div>
-                            <div>
-                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">Telefone *</label>
-                                <input required type="text" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="w-full px-4 py-2 border rounded-xl" />
-                            </div>
-                            <div>
-                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">Empresa</label>
-                                <input type="text" value={formData.company} onChange={e => setFormData({ ...formData, company: e.target.value })} className="w-full px-4 py-2 border rounded-xl" />
-                            </div>
-                            <div className="pt-4 flex gap-3">
-                                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 bg-gray-100 rounded-xl">Cancelar</button>
-                                <button type="submit" disabled={submitting} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl">{submitting ? '...' : 'Salvar'}</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+            {/* Reusable Modal */}
+            <ClientEditModal
+                isOpen={showModal}
+                onClose={() => setShowModal(false)}
+                client={editingClient}
+                onSuccess={handleModalSuccess}
+            />
         </div>
     );
 }

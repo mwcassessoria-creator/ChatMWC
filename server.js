@@ -1375,11 +1375,11 @@ app.get('/api/clients', async (req, res) => {
     try {
         const { search } = req.query;
 
-        // Use priority='deleted' to soft-delete
+        // Use name not like '[DELETED]%' to soft-delete
         let query = supabase
             .from('conversations')
             .select('*')
-            .neq('priority', 'deleted')
+            .not('name', 'ilike', '[DELETED]%')
             .order('name', { ascending: true });
 
         if (search) {
@@ -1452,14 +1452,23 @@ app.get('/api/clients_legacy', async (req, res) => {
     }
 });
 
-// Soft delete client (Using priority='deleted' as workaround for missing status column)
+// Soft delete client (Using Name Prefix '[DELETED]' as ultimate fallback)
 app.delete('/api/clients/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
+        // First get the current name to append prefix
+        const { data: current, error: fetchError } = await supabase
+            .from('conversations')
+            .select('name')
+            .eq('id', id)
+            .single();
+
+        if (fetchError) throw fetchError;
+
         const { error } = await supabase
             .from('conversations')
-            .update({ priority: 'deleted' }) // Changed from status to priority
+            .update({ name: `[DELETED] ${current.name}` })
             .eq('id', id);
 
         if (error) throw error;
