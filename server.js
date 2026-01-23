@@ -1419,6 +1419,29 @@ app.get('/api/clients', async (req, res) => {
     }
 });
 
+// Lookup conversation by chat_id (phone@c.us) to get UUID
+app.get('/api/conversations/lookup/:chatId', async (req, res) => {
+    try {
+        const { chatId } = req.params;
+        const { data, error } = await supabase
+            .from('conversations')
+            .select('*')
+            .eq('chat_id', chatId)
+            .single();
+
+        if (error) {
+            // If not found, returning 404 is fine
+            if (error.code === 'PGRST116') return res.status(404).json({ error: 'Conversation not found' });
+            throw error;
+        }
+
+        res.json(data);
+    } catch (error) {
+        console.error('Error looking up conversation:', error);
+        res.status(500).json({ error: 'Failed to lookup conversation' });
+    }
+});
+
 
 // Get all clients (conversations)
 app.get('/api/clients_legacy', async (req, res) => {

@@ -287,30 +287,49 @@ function App() {
                 <AgentsView />
             ) : currentView === 'clients' ? (
                 <ClientsView
-                    onStartChat={(chatId, conversationId) => {
+                    onStartChat={async (chatId, clientId) => {
                         // Switch view and open chat
                         setCurrentView('my-conversations');
 
                         // Construct chat object
-                        // We might need to fetch full details or rely on existing chats
-                        const chat = chats.find(c => c.id._serialized === chatId);
+                        let chat = chats.find(c => c.id._serialized === chatId);
+                        let realConversationId = null;
 
                         if (chat) {
-                            setActiveChat({
-                                ...chat,
-                                conversationId
-                            });
+                            realConversationId = chat.id; // Usually valid UUID if from DB
+                            // If chat.id is object (WA), verify if we have conversationId prop
+                            if (typeof chat.id === 'object') realConversationId = chat.conversationId;
                         } else {
                             // Fallback if not in current list (rare if refreshed)
-                            setActiveChat({
-                                id: { _serialized: chatId },
-                                conversationId,
-                                name: 'Carregando...', // Will update on refresh
-                                unreadCount: 0
-                            });
-                            // Force refresh to get details
-                            fetchChats();
+                            // TRY TO LOOKUP REAL UUID from Server 
+                            try {
+                                const { data: conv } = await axios.get(`${API_URL}/api/conversations/lookup/${chatId}`);
+                                if (conv && conv.id) {
+                                    realConversationId = conv.id;
+                                    chat = {
+                                        id: { _serialized: chatId },
+                                        ...conv
+                                    };
+                                }
+                            } catch (err) {
+                                console.warn("Lookup failed, using fallback (assignments might fail):", err);
+                            }
+
+                            if (!chat) {
+                                chat = {
+                                    id: { _serialized: chatId },
+                                    name: 'Carregando...',
+                                    unreadCount: 0
+                                };
+                            }
                         }
+
+                        setActiveChat({
+                            ...chat,
+                            conversationId: realConversationId // Use resolved UUID or null
+                        });
+
+                        if (!realConversationId) fetchChats();
                     }}
                 />
             ) : currentView === 'my-conversations' ? (
