@@ -351,6 +351,7 @@ function App() {
                             onCloseTicket={handleCloseTicket}
                             onTransferTicket={handleTransferTicket}
                             onAssignToMe={(convId) => autoAssignToMe(convId)}
+                            onChatUpdated={() => fetchChats()}
                         />
                     ) : (
                         <div className="flex-1 flex items-center justify-center bg-gray-50 text-gray-400">

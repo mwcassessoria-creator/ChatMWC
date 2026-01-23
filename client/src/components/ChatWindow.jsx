@@ -5,7 +5,7 @@ import TransferModal from './TransferModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, onCloseTicket, onTransferTicket, onClose }) => {
+const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, onCloseTicket, onTransferTicket, onClose, onChatUpdated }) => {
     const [inputText, setInputText] = useState('');
     const [isClosing, setIsClosing] = useState(false);
     const [showTransferModal, setShowTransferModal] = useState(false);
@@ -138,7 +138,10 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
             chat.company = editedCompany;
             chat.priority = editedPriority;
             // Phone update logic omitted for brevity as it's complex to update ID live
+            chat.priority = editedPriority;
+            // Phone update logic omitted for brevity as it's complex to update ID live
             setIsEditingDetails(false);
+            if (onChatUpdated) onChatUpdated();
             alert('Dados atualizados!');
         } catch (error) {
             console.error('Error updating details:', error);
