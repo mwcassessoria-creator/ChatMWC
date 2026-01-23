@@ -4,7 +4,7 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-const Sidebar = ({ status, onLogout, onNavigate, currentView, currentUser }) => {
+const Sidebar = ({ status, onLogout, onNavigate, currentView, currentUser, stats }) => {
     const [agentInfo, setAgentInfo] = useState(null);
 
     useEffect(() => {
@@ -83,6 +83,7 @@ const Sidebar = ({ status, onLogout, onNavigate, currentView, currentUser }) => 
                         label="Minhas Conversas"
                         onClick={() => onNavigate?.('my-conversations')}
                         active={currentView === 'my-conversations'}
+                        badge={stats?.queued > 0 ? stats.queued : null}
                     />
                     <NavItem
                         icon={<Inbox size={20} />}
@@ -131,7 +132,7 @@ const Sidebar = ({ status, onLogout, onNavigate, currentView, currentUser }) => 
     );
 };
 
-const NavItem = ({ icon, label, active, count, onClick }) => {
+const NavItem = ({ icon, label, active, count, onClick, badge }) => {
     return (
         <button
             onClick={onClick}
@@ -146,10 +147,12 @@ const NavItem = ({ icon, label, active, count, onClick }) => {
                 </span>
                 <span className="font-medium">{label}</span>
             </div>
-            {count && (
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${active ? 'bg-blue-500/10 text-blue-400' : 'bg-gray-800 text-gray-500'
+            {(count || badge) && (
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${badge
+                        ? 'bg-red-500 text-white animate-pulse'
+                        : (active ? 'bg-blue-500/10 text-blue-400' : 'bg-gray-800 text-gray-500')
                     }`}>
-                    {count}
+                    {badge || count}
                 </span>
             )}
         </button>

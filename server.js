@@ -1370,16 +1370,14 @@ app.post('/api/agents/set-password', async (req, res) => {
 // CLIENT ROUTES
 // =====================================
 
-// Get all clients (conversations) - New Implementation (Priority-based Soft Delete)
+// Get all clients (customers table)
 app.get('/api/clients', async (req, res) => {
     try {
         const { search } = req.query;
 
-        // Use name not like '[DELETED]%' to soft-delete
         let query = supabase
-            .from('conversations')
+            .from('customers')
             .select('*')
-            .not('name', 'ilike', '[DELETED]%')
             .order('name', { ascending: true });
 
         if (search) {
@@ -1388,12 +1386,7 @@ app.get('/api/clients', async (req, res) => {
 
         const { data, error } = await query;
 
-        if (error) {
-            console.warn('[Clients API] Priority filter failed, falling back to legacy fetch...', error.message);
-            // Fallback to fetch all
-            const fallback = await supabase.from('conversations').select('*').order('name');
-            return res.json(fallback.data || []);
-        }
+        if (error) throw error;
 
         res.json(data);
     } catch (error) {
@@ -1401,6 +1394,7 @@ app.get('/api/clients', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch clients' });
     }
 });
+
 
 // Get all clients (conversations)
 app.get('/api/clients_legacy', async (req, res) => {

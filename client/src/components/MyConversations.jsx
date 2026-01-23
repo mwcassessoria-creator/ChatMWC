@@ -3,7 +3,7 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-function MyConversations({ currentUser, onSelectConversation, socket }) {
+function MyConversations({ currentUser, onSelectConversation, socket, onUpdateStats }) {
     const [conversations, setConversations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('active'); // active (Em andamento), queued (Pendente), closed (Resolvido), all
@@ -43,6 +43,15 @@ function MyConversations({ currentUser, onSelectConversation, socket }) {
         }
     };
 
+    // Update parent stats whenever conversations change
+    useEffect(() => {
+        if (!conversations) return;
+        const queuedCount = conversations.filter(c => c.status === 'queued').length;
+        if (onUpdateStats) {
+            onUpdateStats({ queued: queuedCount });
+        }
+    }, [conversations, onUpdateStats]);
+
     const filteredConversations = conversations
         .filter(conv => {
             if (filter === 'all') return true;
@@ -56,6 +65,10 @@ function MyConversations({ currentUser, onSelectConversation, socket }) {
             const priorityOrder = { urgent: 0, high: 1, normal: 2, low: 3 };
             return priorityOrder[a.conversations.priority || 'normal'] - priorityOrder[b.conversations.priority || 'normal'];
         });
+
+    // Counts for UI
+    const pendingCount = conversations.filter(c => c.status === 'queued').length;
+    const activeCount = conversations.filter(c => c.status === 'active').length;
 
     const getPriorityColor = (priority) => {
         switch (priority) {
@@ -102,21 +115,23 @@ function MyConversations({ currentUser, onSelectConversation, socket }) {
                 <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
                     <button
                         onClick={() => setFilter('active')}
-                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${filter === 'active'
+                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2 ${filter === 'active'
                             ? 'bg-green-600 text-white'
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                             }`}
                     >
                         Em Andamento
+                        {activeCount > 0 && <span className="bg-white text-green-600 px-1.5 rounded-full text-xs">{activeCount}</span>}
                     </button>
                     <button
                         onClick={() => setFilter('queued')}
-                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${filter === 'queued'
+                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2 ${filter === 'queued'
                             ? 'bg-yellow-600 text-white'
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                             }`}
                     >
                         Pendente
+                        {pendingCount > 0 && <span className="bg-red-500 text-white px-1.5 rounded-full text-xs animate-pulse">{pendingCount}</span>}
                     </button>
                     <button
                         onClick={() => setFilter('closed')}

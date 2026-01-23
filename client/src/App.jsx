@@ -34,6 +34,7 @@ function App() {
     const [showSetPassword, setShowSetPassword] = useState(false);
     const [pendingUser, setPendingUser] = useState(null);
     const [currentView, setCurrentView] = useState('my-conversations'); // 'conversations', 'my-conversations', 'departments', 'all-conversations', 'agents'
+    const [stats, setStats] = useState({ queued: 0 }); // Notifications
     const activeChatRef = useRef(null);
 
     // Check authentication on mount
@@ -279,6 +280,7 @@ function App() {
                 onNavigate={setCurrentView}
                 currentView={currentView}
                 currentUser={currentUser}
+                stats={stats}
             />
 
             {currentView === 'agents' ? (
