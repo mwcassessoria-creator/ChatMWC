@@ -1372,13 +1372,18 @@ app.post('/api/agents/set-password', async (req, res) => {
 
 // Get all clients (conversations)
 app.get('/api/clients', async (req, res) => {
+    const { search } = req.query;
+
+    // Strategy: Try with 'status' filter first. If it fails (column missing), fall back to no filter.
+
     try {
-        const { search } = req.query;
+        // 1. Attempt with Status Filter (Soft Delete Support)
         let query = supabase
             .from('conversations')
             .select('*')
-            // .eq('status', 'active') // OLD strict way
-            .neq('status', 'deleted') // NEW robust way (keeps NULLs active)
+            .or('status.eq.active,status.is.null') // Explicitly allow NULLs
+            // .neq('status', 'deleted') // Removed for simpler .or logic which is exclusive enough if structured right, but let's stick to simple OR
+            .not('status', 'eq', 'deleted') // Ensure deleted are gone
             .order('name', { ascending: true });
 
         if (search) {
@@ -1386,12 +1391,32 @@ app.get('/api/clients', async (req, res) => {
         }
 
         const { data, error } = await query;
-        if (error) throw error;
+        if (error) throw error; // If error (e.g., column missing), go to catch
 
-        res.json(data);
+        return res.json(data);
+
     } catch (error) {
-        console.error('Error fetching clients:', error);
-        res.status(500).json({ error: 'Failed to fetch clients' });
+        // console.warn('[Clients API] Filter failed (migrations missing?), retrying simple fetch...', error.message);
+
+        // 2. Fallback: Simple Fetch (No Soft Delete)
+        try {
+            let fallbackQuery = supabase
+                .from('conversations')
+                .select('*')
+                .order('name', { ascending: true });
+
+            if (search) {
+                fallbackQuery = fallbackQuery.or(`name.ilike.%${search}%,phone.ilike.%${search}%`);
+            }
+
+            const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+            if (fallbackError) throw fallbackError;
+
+            return res.json(fallbackData);
+        } catch (finalError) {
+            console.error('[Clients API] Critical error fetching clients:', finalError);
+            return res.status(500).json({ error: 'Failed to fetch clients' });
+        }
     }
 });
 
