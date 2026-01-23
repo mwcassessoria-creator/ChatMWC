@@ -4,8 +4,11 @@ const http = require('http');
 const { Server } = require("socket.io");
 const cors = require('cors');
 const qrcode = require("qrcode-terminal");
-const { Client, LocalAuth } = require("whatsapp-web.js");
+const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
 const { createClient } = require('@supabase/supabase-js');
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
 
 // Initialize Supabase
 const supabase = createClient(
@@ -53,6 +56,12 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
+
+// Configure multer for file uploads
+const upload = multer({
+    dest: 'uploads/',
+    limits: { fileSize: 16 * 1024 * 1024 } // 16MB limit
+});
 
 // =====================================
 // WHATSAPP CLIENT
@@ -558,12 +567,12 @@ app.get('/api/messages/:chatId', async (req, res) => {
     }
 });
 
-// Send a message
-app.post('/api/send', async (req, res) => {
+// Send a message (text or file)
+app.post('/api/send', upload.single('file'), async (req, res) => {
     const { chatId, message, agentEmail } = req.body;
-    try {
-        let messageToSend = message;
+    const file = req.file;
 
+    try {
         let agentId = null;
 
         // If agent email is provided, try to find the name and prepend it, AND get ID
@@ -576,9 +585,6 @@ app.post('/api/send', async (req, res) => {
 
             if (agent) {
                 agentId = agent.id;
-                if (agent.name) {
-                    messageToSend = `*${agent.name}:*\n${message}`;
-                }
             }
         }
 
@@ -592,13 +598,38 @@ app.post('/api/send', async (req, res) => {
                 targetChatId = registered._serialized;
             } else {
                 console.warn(`[API Send] Number ${number} not registered on WhatsApp.`);
-                // Proceed anyway, sometimes it works or we want to try
             }
         } catch (checkError) {
             console.warn(`[API Send] Error checking number: ${checkError.message}`);
         }
 
-        const response = await client.sendMessage(targetChatId, messageToSend);
+        let response;
+
+        // Handle file upload
+        if (file) {
+            const media = MessageMedia.fromFilePath(file.path);
+            const caption = message ? `*${agentEmail?.split('@')[0] || 'Agente'}:*\n${message}` : undefined;
+            response = await client.sendMessage(targetChatId, media, { caption });
+
+            // Clean up uploaded file
+            fs.unlinkSync(file.path);
+        } else if (message) {
+            // Text message
+            let messageToSend = message;
+            if (agentEmail) {
+                const { data: agent } = await supabase
+                    .from('agents')
+                    .select('name')
+                    .eq('email', agentEmail)
+                    .single();
+                if (agent?.name) {
+                    messageToSend = `*${agent.name}:*\n${message}`;
+                }
+            }
+            response = await client.sendMessage(targetChatId, messageToSend);
+        } else {
+            return res.status(400).json({ error: 'No message or file provided' });
+        }
 
         // Save sent message to Supabase
         // Note: we search by the original chatId stored in DB to find conversation

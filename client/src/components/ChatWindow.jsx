@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Phone, Video, MoreVertical, Paperclip, Smile, XCircle, Edit2, Save, Building, ArrowRightLeft } from 'lucide-react';
 import axios from 'axios';
+import EmojiPicker from 'emoji-picker-react';
 import TransferModal from './TransferModal';
 import ClientEditModal from './ClientEditModal';
 
@@ -10,9 +11,12 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
     const [inputText, setInputText] = useState('');
     const [isClosing, setIsClosing] = useState(false);
     const [showTransferModal, setShowTransferModal] = useState(false);
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
     // Removed inline edit states
     const [hasActiveTicket, setHasActiveTicket] = useState(true);
     const messagesEndRef = useRef(null);
+    const fileInputRef = useRef(null);
     const [initialShowTransferModal, setInitialShowTransferModal] = useState(false);
 
     const scrollToBottom = () => {
@@ -117,6 +121,32 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
         }
     };
 
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('chatId', chat.id._serialized);
+        formData.append('agentEmail', currentUser);
+
+        try {
+            await axios.post(`${API_URL}/api/send`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            // Clear input
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        } catch (error) {
+            console.error('Error sending file:', error);
+            alert('Falha ao enviar arquivo.');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
     // handleSaveDetails removed (replaced by ClientEditModal)
 
     // Message Component
@@ -184,7 +214,19 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
             </div>
 
             {/* Input Area */}
-            <div className="bg-white p-4 border-t border-gray-200">
+            <div className="bg-white p-4 border-t border-gray-200 relative">
+                {showEmojiPicker && (
+                    <div className="absolute bottom-20 left-4 z-50">
+                        <EmojiPicker
+                            onEmojiClick={(emojiData) => setInputText(prev => prev + emojiData.emoji)}
+                            width={300}
+                            height={400}
+                        />
+                        {/* Close backdrop */}
+                        <div className="fixed inset-0 z-40" onClick={() => setShowEmojiPicker(false)}></div>
+                    </div>
+                )}
+
                 {assignedToOther ? (
                     <div className="flex items-center justify-center p-4 bg-gray-100 rounded-lg border border-gray-200 text-gray-500">
                         <span className="font-medium mr-2">🔒 Conversa em atendimento por outro agente</span>
@@ -201,8 +243,29 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
                     </div>
                 ) : (
                     <form onSubmit={handleSend} className="flex gap-2 items-center">
-                        <button type="button" className="text-gray-500 hover:text-gray-600"><Smile size={24} /></button>
-                        <button type="button" className="text-gray-500 hover:text-gray-600"><Paperclip size={24} /></button>
+                        <button
+                            type="button"
+                            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                            className={`p-2 rounded-full hover:bg-gray-100 transition ${showEmojiPicker ? 'text-blue-500' : 'text-gray-500'}`}
+                        >
+                            <Smile size={24} />
+                        </button>
+
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            className="hidden"
+                            onChange={handleFileUpload}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="text-gray-500 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition"
+                            disabled={isUploading}
+                        >
+                            <Paperclip size={24} className={isUploading ? "animate-pulse text-blue-500" : ""} />
+                        </button>
+
                         <input
                             type="text"
                             value={inputText}
@@ -210,7 +273,7 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
                             onKeyDown={handleKeyDown}
                             placeholder="Digite uma mensagem..."
                             className="flex-1 border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:border-blue-500"
-                            disabled={false}
+                            disabled={isUploading}
                         />
                         <button
                             type="submit"
@@ -236,7 +299,7 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
                 isOpen={showEditModal}
                 onClose={() => setShowEditModal(false)}
                 client={{
-                    // Pass sanitized "Upsert" object. No ID means "Create/Upsert" logic in Modal.
+                    id: chat.conversationId, // Fix: Pass the UUID so PUT /api/clients/:id works
                     name: chat.name,
                     company: chat.company,
                     phone: chat.phone || (chat.id && chat.id._serialized ? chat.id._serialized.split('@')[0] : (typeof chat.id === 'string' ? chat.id.split('@')[0] : ''))
