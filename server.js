@@ -1377,6 +1377,8 @@ app.get('/api/clients', async (req, res) => {
         let query = supabase
             .from('conversations')
             .select('*')
+            // .eq('status', 'active') // OLD strict way
+            .neq('status', 'deleted') // NEW robust way (keeps NULLs active)
             .order('name', { ascending: true });
 
         if (search) {
@@ -1390,6 +1392,24 @@ app.get('/api/clients', async (req, res) => {
     } catch (error) {
         console.error('Error fetching clients:', error);
         res.status(500).json({ error: 'Failed to fetch clients' });
+    }
+});
+
+// Soft delete client
+app.delete('/api/clients/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { error } = await supabase
+            .from('conversations')
+            .update({ status: 'deleted' })
+            .eq('id', id);
+
+        if (error) throw error;
+        res.json({ message: 'Client deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting client:', error);
+        res.status(500).json({ error: 'Failed to delete client' });
     }
 });
 
