@@ -214,8 +214,8 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
                         />
                         <button
                             type="submit"
-                            disabled={!inputText.trim() || !hasActiveTicket}
-                            className={`p-2 rounded-full ${inputText.trim() && hasActiveTicket ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                            disabled={!inputText.trim() || (!hasActiveTicket && !isUnassigned)}
+                            className={`p-2 rounded-full ${inputText.trim() && (hasActiveTicket || isUnassigned) ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                         >
                             <Send size={20} />
                         </button>
