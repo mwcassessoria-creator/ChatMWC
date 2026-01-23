@@ -11,19 +11,21 @@ function ClientEditModal({ isOpen, onClose, client, onSuccess }) {
     useEffect(() => {
         if (isOpen) {
             if (client) {
-                // Extract phone from various possible sources
-                let phone = client.phone || '';
-                if (!phone && client.id) {
-                    // Try to extract from ID (e.g. 551199998888@c.us)
-                    const parts = client.id.toString().split('@');
-                    if (parts.length > 0 && /^\d+$/.test(parts[0])) {
-                        phone = parts[0];
-                    }
+                // Extract phone and clean it up
+                let rawPhone = client.phone || '';
+
+                // If phone is missing but we have an ID that looks like a phone ID
+                if (!rawPhone && client.id && typeof client.id === 'string' && client.id.includes('@')) {
+                    rawPhone = client.id;
                 }
+
+                // Clean the phone for display: remove @c.us, ._serialized, etc.
+                // Also remove any non-digit characters to be safe for the input
+                const cleanPhone = rawPhone.toString().replace(/@c\.us|@g\.us/g, '').replace(/\D/g, '');
 
                 setFormData({
                     name: client.name || '',
-                    phone: phone,
+                    phone: cleanPhone,
                     company: client.company || ''
                 });
             } else {
