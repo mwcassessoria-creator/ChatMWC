@@ -243,12 +243,17 @@ client.on("message", async (msg) => {
         if (chat.isGroup) return;
 
         // 1. Get or Create Conversation
+        const contact = await msg.getContact();
+        const realPhone = contact.number || chat.id.user;
+        // Prefer address book name (contact.name) > pushname > chat name > phone
+        const formattedName = contact.name || contact.pushname || chat.name || `+${realPhone}`;
+
         const { data: conversation } = await supabase
             .from('conversations')
             .upsert({
                 chat_id: chat.id._serialized,
-                name: chat.name || chat.id.user,
-                phone: chat.id.user,
+                name: formattedName,
+                phone: realPhone,
                 is_group: chat.isGroup,
                 last_message_at: new Date(msg.timestamp * 1000).toISOString()
             }, { onConflict: 'chat_id' })
