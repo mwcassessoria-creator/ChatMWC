@@ -86,25 +86,32 @@ Isso permite que você teste o site oficial (Vercel) usando o backend do seu com
     ```
     (Substitua pelo link real do seu site no Vercel).
 
+---
+
 ## 2. Deploy do Frontend (Vercel)
 
-Se você já fez o deploy no Vercel, precisa apenas atualizar as variáveis de ambiente com a nova URL do Render.
+O projeto já está configurado com `vercel.json` na raiz para facilitar o deploy.
 
-### Passo 1: Atualizar Variáveis
-1. No painel do Vercel, vá em **Settings** → **Environment Variables**
-2. Edite `VITE_API_URL` e `VITE_SOCKET_URL`
-3. Coloque a nova URL do Render (sem a barra `/` no final)
+### Opção A: Importar Repositório (Recomendado)
+1. No painel do Vercel, clique em **Add New...** -> **Project**.
+2. Importe o repositório Git do `ChatMWC`.
+3. **Framework Preset**: O Vercel deve detectar `Vite` automaticamente.
+4. **Root Directory**: Mantenha como está (Raiz).
+   - O arquivo `vercel.json` configurará automaticamente o comando de build (`cd client && npm install && npm run build`) e o diretório de saída (`client/dist`).
+5. **Environment Variables**:
+   Adicione as variáveis para conectar ao seu backend (Render/Railway ou Ngrok):
+   - `VITE_API_URL`: ex `https://chat-mwc-api.onrender.com`
+   - `VITE_SOCKET_URL`: ex `https://chat-mwc-api.onrender.com`
 
-Exemplo:
+### Opção B: Deploy via CLI
+Se preferir usar o `vercel-cli`:
+```bash
+vercel
 ```
-VITE_API_URL=https://chat-mwc-api.onrender.com
-VITE_SOCKET_URL=https://chat-mwc-api.onrender.com
-```
+Siga as instruções. As configurações do `vercel.json` serão respeitadas.
 
-### Passo 2: Redeploy
-1. Vá na aba **Deployments**
-2. Clique nos 3 pontinhos do último deploy → **Redeploy**
-3. Aguarde finalizar
+### Passo Adicional: Atualizar Backend
+Após ter a URL do seu frontend no Vercel (ex: `https://chat-mwc.vercel.app`), lembre-se de voltar no seu Backend (Render/Railway) e atualizar a variável `CORS_ORIGIN` para permitir conexões deste domínio.
 
 ---
 
