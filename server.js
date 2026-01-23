@@ -15,12 +15,20 @@ const supabase = createClient(
 
 const app = express();
 const server = http.createServer(app);
-const allowedOrigins = [
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "https://chat-mwc.vercel.app",
-    "https://chat-mwc.vercel.app/"
-];
+
+// Build allowed origins from environment variable
+const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
+const allowedOrigins = corsOrigin.split(',').map(origin => origin.trim());
+
+// Also add localhost variants for development
+if (!allowedOrigins.includes('http://localhost:5173')) {
+    allowedOrigins.push('http://localhost:5173');
+}
+if (!allowedOrigins.includes('http://localhost:5174')) {
+    allowedOrigins.push('http://localhost:5174');
+}
+
+console.log('🔒 CORS allowed origins:', allowedOrigins);
 
 const io = new Server(server, {
     cors: {
@@ -35,9 +43,8 @@ app.use(cors({
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
         if (allowedOrigins.indexOf(origin) === -1 && !origin.includes('ngrok')) {
-            // Optional: stricter check, but for now allow ngrok too if dynamic
-            // return callback(new Error('The CORS policy for this site does not allow access from the specified Origin.'), false);
-            return callback(null, true); // Fallback: allow for testing
+            console.warn('⚠️ CORS blocked origin:', origin);
+            return callback(new Error('The CORS policy for this site does not allow access from the specified Origin.'), false);
         }
         return callback(null, true);
     },
