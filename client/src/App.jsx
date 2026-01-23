@@ -287,12 +287,29 @@ function App() {
                     <MyConversations
                         currentUser={currentUser}
                         socket={socket} // Pass socket for realtime updates
-                        onSelectConversation={(chatId, conversationId, ticketId) => {
-                            const chat = chats.find(c => c.id._serialized === chatId);
+                        onSelectConversation={(chatId, conversationId, ticketId, conversationData) => {
+                            let chat = chats.find(c => c.id._serialized === chatId);
+
+                            // Fallback if chat not in main list but we have data
+                            if (!chat && conversationData) {
+                                chat = {
+                                    id: { _serialized: chatId },
+                                    name: conversationData.name,
+                                    isGroup: false,
+                                    unreadCount: 0
+                                };
+                            }
+
                             if (chat) {
-                                chat.conversationId = conversationId; // Store conversation ID
-                                chat.selectedTicketId = ticketId; // Store specific ticket ID
-                                setActiveChat(chat);
+                                // Clone to ensure React detects state change
+                                const newActiveChat = {
+                                    ...chat,
+                                    conversationId: conversationId,
+                                    selectedTicketId: ticketId
+                                };
+                                setActiveChat(newActiveChat);
+                            } else {
+                                console.warn('Chat not found for ID:', chatId);
                             }
                         }}
                     />

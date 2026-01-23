@@ -42,7 +42,9 @@ app.use(cors({
     origin: function (origin, callback) {
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) === -1 && !origin.includes('ngrok')) {
+
+        // Allow allowedOrigins, any ngrok domain, AND any vercel.app domain
+        if (allowedOrigins.indexOf(origin) === -1 && !origin.includes('ngrok') && !origin.includes('.vercel.app')) {
             console.warn('⚠️ CORS blocked origin:', origin);
             return callback(new Error('The CORS policy for this site does not allow access from the specified Origin.'), false);
         }

@@ -174,7 +174,7 @@ function MyConversations({ currentUser, onSelectConversation, socket }) {
                     filteredConversations.map((conv) => (
                         <div
                             key={conv.id}
-                            onClick={() => onSelectConversation(conv.conversations.chat_id, conv.conversation_id, conv.id)}
+                            onClick={() => onSelectConversation(conv.conversations.chat_id, conv.conversation_id, conv.id, conv.conversations)}
                             className="bg-white border-b border-gray-200 p-4 hover:bg-gray-50 cursor-pointer transition-colors"
                         >
                             <div className="flex items-start justify-between">
