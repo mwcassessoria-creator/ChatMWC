@@ -533,13 +533,30 @@ app.post('/api/send', async (req, res) => {
             }
         }
 
-        const response = await client.sendMessage(chatId, messageToSend);
+        // Verify/Get correct ID
+        let targetChatId = chatId;
+        try {
+            // Extract number part
+            const number = chatId.replace('@c.us', '');
+            const registered = await client.getNumberId(number);
+            if (registered) {
+                targetChatId = registered._serialized;
+            } else {
+                console.warn(`[API Send] Number ${number} not registered on WhatsApp.`);
+                // Proceed anyway, sometimes it works or we want to try
+            }
+        } catch (checkError) {
+            console.warn(`[API Send] Error checking number: ${checkError.message}`);
+        }
+
+        const response = await client.sendMessage(targetChatId, messageToSend);
 
         // Save sent message to Supabase
+        // Note: we search by the original chatId stored in DB to find conversation
         const { data: conversation } = await supabase
             .from('conversations')
             .select('id')
-            .eq('chat_id', chatId)
+            .eq('chat_id', chatId) // DB stores the one we generated
             .single();
 
         if (conversation) {
