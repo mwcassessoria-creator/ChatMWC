@@ -1389,13 +1389,14 @@ app.get('/api/clients', async (req, res) => {
         if (error) throw error;
 
         // Enrich with chat_id so frontend can start chat immediately
-        // Assuming phone is stored in correct format (55...)
         const clientsWithChatId = data.map(c => {
-            // Basic cleaning just in case
-            const cleanPhone = c.phone ? c.phone.replace(/\D/g, '') : '';
-            // If phone doesn't have country code (unlikely if created via app), might need handling, 
-            // but strictly speaking we should trust the stored phone if we validate it on write.
-            // For now, assume stored phone is good or at least usable.
+            let cleanPhone = c.phone ? c.phone.replace(/\D/g, '') : '';
+
+            // Heuristic for Brazil: if 10 or 11 digits, assume missing 55
+            if (cleanPhone.length >= 10 && cleanPhone.length <= 11) {
+                cleanPhone = '55' + cleanPhone;
+            }
+
             return {
                 ...c,
                 chat_id: cleanPhone ? `${cleanPhone}@c.us` : null
