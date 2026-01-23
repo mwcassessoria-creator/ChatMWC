@@ -486,10 +486,18 @@ app.get('/api/messages/:chatId', async (req, res) => {
         }
 
         // Fallback: fetch from WhatsApp Web.js
-        const chat = await client.getChatById(req.params.chatId);
-        const limit = parseInt(req.query.limit) || 50;
-        const messages = await chat.fetchMessages({ limit });
-        res.json(messages);
+        // Fallback: fetch from WhatsApp Web.js
+        try {
+            const chat = await client.getChatById(req.params.chatId);
+            const limit = parseInt(req.query.limit) || 50;
+            const messages = await chat.fetchMessages({ limit });
+            res.json(messages);
+        } catch (waError) {
+            console.warn(`[getChatById] Could not fetch from WA (likely new chat): ${waError.message}`);
+            // Return empty array so UI doesn't break. 
+            // User can send message to start it.
+            res.json([]);
+        }
 
     } catch (error) {
         console.error("Error fetching messages:", error);
