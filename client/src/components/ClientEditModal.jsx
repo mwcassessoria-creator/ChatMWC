@@ -11,9 +11,19 @@ function ClientEditModal({ isOpen, onClose, client, onSuccess }) {
     useEffect(() => {
         if (isOpen) {
             if (client) {
+                // Extract phone from various possible sources
+                let phone = client.phone || '';
+                if (!phone && client.id) {
+                    // Try to extract from ID (e.g. 551199998888@c.us)
+                    const parts = client.id.toString().split('@');
+                    if (parts.length > 0 && /^\d+$/.test(parts[0])) {
+                        phone = parts[0];
+                    }
+                }
+
                 setFormData({
                     name: client.name || '',
-                    phone: client.phone || '', // Ensure we use the best phone available
+                    phone: phone,
                     company: client.company || ''
                 });
             } else {

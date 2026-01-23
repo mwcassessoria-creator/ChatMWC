@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, UserPlus, Phone, Briefcase, MessageSquare, X, Building, User, History, Edit2, FileText, Calendar, Trash2, ChevronRight } from 'lucide-react';
 import axios from 'axios';
+import ClientEditModal from './ClientEditModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -13,8 +14,6 @@ function ClientsView({ onStartChat }) {
     // Create/Edit Modal
     const [showModal, setShowModal] = useState(false);
     const [editingClient, setEditingClient] = useState(null);
-    const [formData, setFormData] = useState({ name: '', phone: '', company: '' });
-    const [submitting, setSubmitting] = useState(false);
 
     // History (Loaded in side panel now)
     const [clientHistory, setClientHistory] = useState([]);
