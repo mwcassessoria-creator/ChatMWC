@@ -1468,6 +1468,11 @@ app.get('/api/departments/:id/conversations', async (req, res) => {
             throw error;
         }
 
+        console.log(`[API] Found ${tickets?.length || 0} raw tickets for dept ${id}`);
+        if (tickets && tickets.length > 0) {
+            console.log('[API] Sample ticket:', JSON.stringify(tickets[0], null, 2));
+        }
+
         // Format response to match expected structure in frontend
         const conversations = tickets.map(ticket => ({
             conversation_id: ticket.conversations?.id,
@@ -1476,7 +1481,15 @@ app.get('/api/departments/:id/conversations', async (req, res) => {
             created_at: ticket.created_at,
             conversations: ticket.conversations,
             agents: ticket.agents
-        })).filter(t => t.conversations); // Filter out if conversation is missing
+        })).filter(t => {
+            if (!t.conversations) {
+                console.log(`[API] Filtered out ticket ${t.id} because conversation is missing`);
+                return false;
+            }
+            return true;
+        });
+
+        console.log(`[API] Returning ${conversations.length} formatted conversations`);
 
         res.json(conversations);
     } catch (error) {
