@@ -34,8 +34,10 @@ function DepartmentView({ currentUser }) {
     };
 
     const fetchDepartmentConversations = async (deptId) => {
+        console.log('Fetching conversations for dept:', deptId);
         try {
             const response = await axios.get(`${API_URL}/api/departments/${deptId}/conversations`);
+            console.log('Department conversations response:', response.data);
             setDeptConversations(response.data);
         } catch (error) {
             console.error('Error fetching department conversations:', error);
