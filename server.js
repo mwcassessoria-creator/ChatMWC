@@ -638,7 +638,16 @@ app.post('/api/send', upload.single('file'), async (req, res) => {
 
         // Handle file upload
         if (file) {
-            const media = MessageMedia.fromFilePath(file.path);
+            // Read file as base64
+            const fileData = fs.readFileSync(file.path, { encoding: 'base64' });
+
+            // Create MessageMedia with proper mimetype and filename
+            const media = new MessageMedia(
+                file.mimetype,
+                fileData,
+                file.originalname
+            );
+
             const caption = message ? `*${agentEmail?.split('@')[0] || 'Agente'}:*\n${message}` : undefined;
             response = await client.sendMessage(targetChatId, media, { caption });
 
