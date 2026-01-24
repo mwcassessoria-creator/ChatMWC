@@ -205,10 +205,11 @@ function App() {
         }
     };
 
-    const handleCloseTicket = async (conversationId) => {
+    const handleCloseTicket = async (conversationId, subject) => {
         try {
             await axios.post(`${API_URL}/api/conversations/${conversationId}/close`, {
-                agentEmail: currentUser
+                agentEmail: currentUser,
+                subject: subject
             });
             // Refresh
             fetchChats();

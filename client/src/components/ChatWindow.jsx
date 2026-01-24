@@ -4,6 +4,7 @@ import axios from 'axios';
 import EmojiPicker from 'emoji-picker-react';
 import TransferModal from './TransferModal';
 import ClientEditModal from './ClientEditModal';
+import CloseTicketModal from './CloseTicketModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -11,6 +12,8 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
     const [inputText, setInputText] = useState('');
     const [isClosing, setIsClosing] = useState(false);
     const [showTransferModal, setShowTransferModal] = useState(false);
+    const [showCloseModal, setShowCloseModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     // Removed inline edit states
@@ -82,7 +85,7 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
         }
     };
 
-    const handleCloseConversation = async () => {
+    const handleCloseConversation = () => {
         if (!currentUser) {
             alert('Usuário não autenticado');
             return;
@@ -91,13 +94,15 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
             alert('Esta conversa não está atribuída a você.');
             return;
         }
-        const confirmed = window.confirm('Deseja encerrar este atendimento?');
-        if (!confirmed) return;
+        setShowCloseModal(true);
+    };
 
+    const handleConfirmClose = async (subject) => {
         try {
             setIsClosing(true);
-            await onCloseTicket(chat.conversationId);
+            await onCloseTicket(chat.conversationId, subject);
             setIsClosing(false);
+            setShowCloseModal(false);
             if (onClose) onClose();
         } catch (error) {
             alert('Falha ao encerrar ticket. Veja o console.');
@@ -334,6 +339,13 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
                 onSuccess={() => {
                     if (onChatUpdated) onChatUpdated();
                 }}
+            />
+
+            <CloseTicketModal
+                isOpen={showCloseModal}
+                onClose={() => setShowCloseModal(false)}
+                onConfirm={handleConfirmClose}
+                isLoading={isClosing}
             />
         </div>
     );

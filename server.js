@@ -1021,11 +1021,13 @@ app.post('/api/conversations/:id/close', async (req, res) => {
 
         // Close ticket
         console.log('[CLOSE] Closing ticket:', ticket.id);
+        const { subject } = req.body; // Get subject from request body
         const { error: closeError } = await supabase
             .from('tickets')
             .update({
                 status: 'closed',
-                closed_at: new Date().toISOString()
+                closed_at: new Date().toISOString(),
+                subject: subject || null // Save subject if provided
             })
             .eq('id', ticket.id);
 
