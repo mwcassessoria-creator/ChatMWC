@@ -197,7 +197,7 @@ async function getOrCreateActiveTicket(conversationId, departmentId = null, agen
     return newTicket;
 }
 
-// Helper to save message to Supabase (Updated for Tickets)
+// Helper to save message to Supabase (Updated for Tickets + Media)
 async function saveMessageToSupabase(conversationId, msg, ticketId = null, agentId = null) {
     try {
         const timestamp = new Date(msg.timestamp * 1000).toISOString();
@@ -209,6 +209,35 @@ async function saveMessageToSupabase(conversationId, msg, ticketId = null, agent
             ticketId = ticket?.id;
         }
 
+        let mediaUrl = null;
+        let mediaFilename = null;
+
+        // Download and save media if present
+        if (msg.hasMedia) {
+            try {
+                const media = await msg.downloadMedia();
+                if (media) {
+                    // Create media directory if it doesn't exist
+                    const mediaDir = path.join(__dirname, 'media');
+                    if (!fs.existsSync(mediaDir)) {
+                        fs.mkdirSync(mediaDir, { recursive: true });
+                    }
+
+                    // Generate filename
+                    const ext = media.mimetype.split('/')[1] || 'bin';
+                    mediaFilename = `${msg.id._serialized}.${ext}`;
+                    const mediaPath = path.join(mediaDir, mediaFilename);
+
+                    // Save media file
+                    fs.writeFileSync(mediaPath, media.data, 'base64');
+                    mediaUrl = `/api/media/${msg.id._serialized}`;
+                    console.log(`[MEDIA] Saved: ${mediaFilename}`);
+                }
+            } catch (mediaError) {
+                console.error('[MEDIA] Error downloading media:', mediaError);
+            }
+        }
+
         const { error } = await supabase
             .from('messages')
             .upsert({
@@ -216,10 +245,11 @@ async function saveMessageToSupabase(conversationId, msg, ticketId = null, agent
                 ticket_id: ticketId, // Associate with ticket
                 message_id: msg.id._serialized,
                 from_me: msg.fromMe,
-                body: msg.body,
+                body: msg.body || (msg.hasMedia ? `[${msg.type}]` : ''),
                 timestamp: timestamp,
                 has_media: msg.hasMedia,
-                media_type: msg.type
+                media_type: msg.type,
+                media_url: mediaUrl
             }, { onConflict: 'message_id' });
 
         if (error) {
@@ -235,10 +265,11 @@ async function saveMessageToSupabase(conversationId, msg, ticketId = null, agent
             const socketPayload = {
                 id: { _serialized: msg.id._serialized },
                 fromMe: msg.fromMe,
-                body: msg.body,
+                body: msg.body || (msg.hasMedia ? `[${msg.type}]` : ''),
                 timestamp: msg.timestamp,
                 hasMedia: msg.hasMedia,
                 type: msg.type,
+                mediaUrl: mediaUrl,
                 from: msg.from || (msg.fromMe ? 'me' : null),
                 to: msg.to,
                 ticketId: ticketId
@@ -647,6 +678,32 @@ app.post('/api/send', upload.single('file'), async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Failed to send message' });
+    }
+});
+
+// Serve media files
+app.get('/api/media/:messageId', async (req, res) => {
+    try {
+        const { messageId } = req.params;
+
+        // Find the file in media directory
+        const mediaDir = path.join(__dirname, 'media');
+        if (!fs.existsSync(mediaDir)) {
+            return res.status(404).json({ error: 'Media directory not found' });
+        }
+
+        const files = fs.readdirSync(mediaDir);
+        const mediaFile = files.find(f => f.startsWith(messageId));
+
+        if (!mediaFile) {
+            return res.status(404).json({ error: 'Media not found' });
+        }
+
+        const filePath = path.join(mediaDir, mediaFile);
+        res.sendFile(filePath);
+    } catch (error) {
+        console.error('[MEDIA] Error serving media:', error);
+        res.status(500).json({ error: 'Failed to serve media' });
     }
 });
 

@@ -150,7 +150,7 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
     // handleSaveDetails removed (replaced by ClientEditModal)
 
     // Message Component
-    const Message = ({ isMe, name, time, text }) => (
+    const Message = ({ isMe, name, time, text, hasMedia, mediaUrl, mediaType }) => (
         <div className={`flex gap-4 ${isMe ? 'flex-row-reverse' : ''}`}>
             <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${isMe ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-600'}`}>
                 {name.charAt(0)}
@@ -161,7 +161,27 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
                     <span className="text-xs text-gray-400">{time}</span>
                 </div>
                 <div className={`p-3 rounded-2xl text-sm ${isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white border border-gray-200 text-gray-800 rounded-tl-none shadow-sm'}`}>
-                    {text}
+                    {hasMedia && mediaUrl ? (
+                        <div className="space-y-2">
+                            {mediaType?.includes('image') ? (
+                                <img src={`${API_URL}${mediaUrl}`} alt="Anexo" className="max-w-full rounded-lg" />
+                            ) : (
+                                <a
+                                    href={`${API_URL}${mediaUrl}`}
+                                    download
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`flex items-center gap-2 ${isMe ? 'text-white hover:underline' : 'text-blue-600 hover:underline'}`}
+                                >
+                                    <Paperclip size={16} />
+                                    {text || 'Baixar arquivo'}
+                                </a>
+                            )}
+                            {text && mediaType?.includes('image') && <div className="mt-2">{text}</div>}
+                        </div>
+                    ) : (
+                        text
+                    )}
                 </div>
             </div>
         </div>
@@ -208,6 +228,9 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
                         name={msg.fromMe ? "Você" : chat.name}
                         time={new Date(msg.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         text={msg.body}
+                        hasMedia={msg.hasMedia}
+                        mediaUrl={msg.mediaUrl}
+                        mediaType={msg.type}
                     />
                 ))}
                 <div ref={messagesEndRef} />
