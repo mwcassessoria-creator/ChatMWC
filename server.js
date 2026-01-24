@@ -1434,6 +1434,57 @@ app.get('/api/departments', async (req, res) => {
     }
 });
 
+// Get conversations for a specific department
+app.get('/api/departments/:id/conversations', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        console.log(`[API] Fetching conversations for department: ${id}`);
+
+        const { data: tickets, error } = await supabase
+            .from('tickets')
+            .select(`
+                id,
+                status,
+                created_at,
+                agent_id,
+                department_id,
+                conversations (
+                    id,
+                    name,
+                    phone,
+                    last_message_at,
+                    unread_count
+                ),
+                agents (
+                    name
+                )
+            `)
+            .eq('department_id', id)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('[API] Error fetching department tickets:', error);
+            throw error;
+        }
+
+        // Format response to match expected structure in frontend
+        const conversations = tickets.map(ticket => ({
+            conversation_id: ticket.conversations?.id,
+            id: ticket.id, // Ticket ID
+            status: ticket.status,
+            created_at: ticket.created_at,
+            conversations: ticket.conversations,
+            agents: ticket.agents
+        })).filter(t => t.conversations); // Filter out if conversation is missing
+
+        res.json(conversations);
+    } catch (error) {
+        console.error('[API] Error in /api/departments/:id/conversations:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // =====================================
 // AUTHENTICATION ROUTE
 // =====================================
