@@ -1439,7 +1439,15 @@ app.get('/api/departments/:id/conversations', async (req, res) => {
     const { id } = req.params;
 
     try {
-        console.log(`[API] Fetching conversations for department: ${id}`);
+        console.log(`[API] Fetching conversations for department: "${id}"`);
+
+        // Teste simples para ver se existem tickets
+        const { count, error: countError } = await supabase
+            .from('tickets')
+            .select('*', { count: 'exact', head: true })
+            .eq('department_id', id);
+
+        console.log(`[API] Quick count for dept ${id}: ${count} (Error: ${countError?.message})`);
 
         const { data: tickets, error } = await supabase
             .from('tickets')
@@ -1468,30 +1476,28 @@ app.get('/api/departments/:id/conversations', async (req, res) => {
             throw error;
         }
 
-        console.log(`[API] Found ${tickets?.length || 0} raw tickets for dept ${id}`);
-        if (tickets && tickets.length > 0) {
-            console.log('[API] Sample ticket:', JSON.stringify(tickets[0], null, 2));
+        console.log(`[API] Raw tickets found: ${tickets?.length}`);
+
+        // Retornando RAW para debug se estiver vazio
+        if (!tickets || tickets.length === 0) {
+            console.log('[API] Returning empty list because no tickets found via query');
+            return res.json([]);
         }
 
-        // Format response to match expected structure in frontend
+        // Format without filtering initially to see if that's the issue
         const conversations = tickets.map(ticket => ({
             conversation_id: ticket.conversations?.id,
-            id: ticket.id, // Ticket ID
+            id: ticket.id,
             status: ticket.status,
             created_at: ticket.created_at,
             conversations: ticket.conversations,
-            agents: ticket.agents
-        })).filter(t => {
-            if (!t.conversations) {
-                console.log(`[API] Filtered out ticket ${t.id} because conversation is missing`);
-                return false;
-            }
-            return true;
-        });
+            agents: ticket.agents,
+            _debug_has_conversation: !!ticket.conversations
+        }));
 
-        console.log(`[API] Returning ${conversations.length} formatted conversations`);
-
+        console.log(`[API] Sending ${conversations.length} records`);
         res.json(conversations);
+
     } catch (error) {
         console.error('[API] Error in /api/departments/:id/conversations:', error);
         res.status(500).json({ error: error.message });
