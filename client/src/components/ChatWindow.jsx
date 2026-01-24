@@ -47,8 +47,8 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
         }
     }, [chat, messages]);
 
-    // Client Edit Modal
-    const [showEditModal, setShowEditModal] = useState(false);
+    // Client Edit Modal - State moved to top
+
 
     const checkActiveTicket = async () => {
         const hasTicketMessages = messages && messages.length > 0 && messages.some(m => m.ticketId);
