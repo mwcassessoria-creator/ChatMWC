@@ -561,6 +561,7 @@ app.get('/api/messages/:chatId', async (req, res) => {
                     timestamp: new Date(m.timestamp).getTime() / 1000,
                     hasMedia: m.has_media,
                     type: m.media_type,
+                    mediaUrl: m.media_url, // Include media URL for downloads
                     from: m.from_me ? (client.info ? client.info.wid._serialized : 'me') : req.params.chatId,
                     to: m.from_me ? req.params.chatId : (client.info ? client.info.wid._serialized : 'me'),
                     ticketId: m.ticket_id // Include ticket ID
