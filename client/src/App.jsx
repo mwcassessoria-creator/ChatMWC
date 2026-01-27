@@ -275,7 +275,7 @@ function App() {
     }
 
     return (
-        <div className="flex flex-col md:flex-row h-screen bg-gray-50 font-sans overflow-hidden notranslate" translate="no">
+        <div className="flex flex-col md:flex-row h-[calc(100dvh-64px)] md:h-screen bg-gray-50 font-sans overflow-hidden notranslate" translate="no">
             <Sidebar
                 status={status}
                 onLogout={handleLogout}

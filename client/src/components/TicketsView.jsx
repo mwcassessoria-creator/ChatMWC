@@ -183,12 +183,12 @@ const TicketsView = ({ onOpenChat }) => {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-slate-50 border-b text-slate-500 text-xs uppercase tracking-wider">
-                                <th className="p-4 font-semibold">Ticket ID</th>
+                                <th className="p-4 font-semibold hidden md:table-cell">Ticket ID</th>
                                 <th className="p-4 font-semibold">Assunto</th>
-                                <th className="p-4 font-semibold">Data Criação</th>
+                                <th className="p-4 font-semibold hidden md:table-cell">Data Criação</th>
                                 <th className="p-4 font-semibold">Cliente</th>
-                                <th className="p-4 font-semibold">Departamento</th>
-                                <th className="p-4 font-semibold">Atendente</th>
+                                <th className="p-4 font-semibold hidden md:table-cell">Departamento</th>
+                                <th className="p-4 font-semibold hidden md:table-cell">Atendente</th>
                                 <th className="p-4 font-semibold">Status</th>
                                 <th className="p-4 font-semibold text-right">Ações</th>
                             </tr>
@@ -209,13 +209,13 @@ const TicketsView = ({ onOpenChat }) => {
                             ) : (
                                 tickets.map((ticket) => (
                                     <tr key={ticket.id} className="hover:bg-slate-50 transition-colors">
-                                        <td className="p-4 font-mono text-xs text-blue-600 font-medium">
+                                        <td className="p-4 font-mono text-xs text-blue-600 font-medium hidden md:table-cell">
                                             #{ticket.id.slice(0, 8)}
                                         </td>
                                         <td className="p-4 font-medium text-gray-700">
                                             {ticket.subject || <span className="text-gray-400 italic">Sem assunto</span>}
                                         </td>
-                                        <td className="p-4">
+                                        <td className="p-4 hidden md:table-cell">
                                             <div className="flex flex-col">
                                                 <span>{formatDate(ticket.created_at)}</span>
                                                 {ticket.closed_at && (
@@ -229,13 +229,13 @@ const TicketsView = ({ onOpenChat }) => {
                                                 {ticket.conversations?.phone}
                                             </div>
                                         </td>
-                                        <td className="p-4">
+                                        <td className="p-4 hidden md:table-cell">
                                             <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-slate-100 text-slate-600 text-xs">
                                                 <Building size={12} />
                                                 {ticket.departments?.name || '-'}
                                             </span>
                                         </td>
-                                        <td className="p-4">
+                                        <td className="p-4 hidden md:table-cell">
                                             {ticket.agents ? (
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold">
