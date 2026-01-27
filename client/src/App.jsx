@@ -389,25 +389,45 @@ function App() {
             ) : currentView === 'departments' ? (
                 <DepartmentView currentUser={currentUser} />
             ) : currentView === 'all-conversations' ? (
-                <AllConversationsView
-                    onSelectConversation={(chatId) => {
-                        // Open chat logic
-                        // Need to fetch chat data if not available? 
-                        // Actually handleSelectChat (defined in MyConversations usage) might be adaptable
-                        // But here we might just set Active Chat directly
-                        // We will try to find in 'chats' state or create partial
-
-                        let chat = chats.find(c => c.id._serialized === chatId);
-                        if (!chat) {
-                            chat = {
-                                id: { _serialized: chatId },
-                                name: 'Carregando...',
-                                unreadCount: 0
-                            };
-                        }
-                        setActiveChat(chat);
-                    }}
-                />
+                <div className="flex flex-1 overflow-hidden">
+                    <div className={`${activeChat ? 'hidden md:flex' : 'flex'} h-full w-full md:w-auto flex-col border-r border-gray-200 bg-gray-50`}>
+                        <AllConversationsView
+                            onSelectConversation={(chatId) => {
+                                let chat = chats.find(c => c.id._serialized === chatId);
+                                if (!chat) {
+                                    chat = {
+                                        id: { _serialized: chatId },
+                                        name: 'Carregando...',
+                                        unreadCount: 0
+                                    };
+                                }
+                                setActiveChat(chat);
+                            }}
+                        />
+                    </div>
+                    {activeChat ? (
+                        <ChatWindow
+                            chat={activeChat}
+                            currentUser={currentUser}
+                            messages={messages}
+                            onSendMessage={handleSendMessage}
+                            onClose={() => setActiveChat(null)}
+                            onCloseTicket={handleCloseTicket}
+                            onTransferTicket={handleTransferTicket}
+                            onAssignToMe={(convId) => autoAssignToMe(convId)}
+                            onChatUpdated={() => fetchChats()}
+                        />
+                    ) : (
+                        <div className="hidden md:flex flex-1 items-center justify-center bg-gray-50 text-gray-400">
+                            <div className="flex flex-col items-center">
+                                <div className="p-4 bg-blue-50 rounded-full mb-4">
+                                    <MessageSquare size={32} className="text-blue-400" />
+                                </div>
+                                <p className="font-medium">Selecione uma conversa do histórico</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
             ) : currentView === 'tickets' ? (
                 <TicketsView
                     onOpenChat={async (chatId, ticketId) => {
