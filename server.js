@@ -588,6 +588,9 @@ app.get('/api/messages/:chatId', async (req, res) => {
                 }));
                 return res.json(mappedMessages);
             }
+
+            // If conversation exists but no messages found (e.g. new ticket or empty ticket), return empty
+            return res.json([]);
         }
 
         // Fallback: fetch from WhatsApp Web.js
