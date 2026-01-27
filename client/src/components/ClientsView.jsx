@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, UserPlus, Phone, Briefcase, MessageSquare, X, Building, User, History, Edit2, FileText, Calendar, Trash2, ChevronRight } from 'lucide-react';
+import { Search, UserPlus, Phone, Briefcase, MessageSquare, X, Building, User, History, Edit2, FileText, Calendar, Trash2, ChevronRight, Plus } from 'lucide-react';
 import axios from 'axios';
 import ClientEditModal from './ClientEditModal';
 
@@ -109,6 +109,23 @@ function ClientsView({ onStartChat }) {
         return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
+    const getAvatarColor = (name) => {
+        const colors = [
+            'bg-slate-400 text-white',
+            'bg-purple-400 text-white',
+            'bg-emerald-400 text-white',
+            'bg-blue-500 text-white',
+            'bg-orange-400 text-white',
+            'bg-pink-400 text-white'
+        ];
+        // Hash simples para consistência
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+            hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return colors[Math.abs(hash) % colors.length];
+    };
+
     return (
         <div className="flex h-full bg-gray-50 overflow-hidden">
             {/* Main Content (Table) */}
@@ -137,13 +154,63 @@ function ClientsView({ onStartChat }) {
                             placeholder="Buscar por nome ou telefone..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white shadow-sm outline-none"
+                            className="w-full pl-10 pr-4 py-3 border border-transparent rounded-xl focus:ring-2 focus:ring-blue-500 bg-gray-100 shadow-sm outline-none transition-all placeholder-gray-400 font-medium"
                         />
                     </div>
                 </div>
 
-                {/* Table List */}
-                <div className="flex-1 overflow-y-auto p-6 pt-4">
+                {/* Mobile Cards List */}
+                <div className="md:hidden flex-1 overflow-y-auto p-4 space-y-3 pb-24">
+                    {loading ? (
+                        <div className="text-center py-10 text-gray-400">Carregando contatos...</div>
+                    ) : clients.length === 0 ? (
+                        <div className="text-center py-10 text-gray-400">Nenhum cliente encontrado</div>
+                    ) : (
+                        clients.map(client => (
+                            <div
+                                key={client.id}
+                                onClick={() => setSelectedClient(client)}
+                                className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between active:scale-[0.98] transition-transform"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-sm ${getAvatarColor(client.name)}`}>
+                                        {client.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <div className="font-bold text-gray-900 text-base">{client.name}</div>
+                                        <div className="flex items-center gap-1.5 text-gray-500 text-sm mt-0.5">
+                                            <Phone size={14} className="text-gray-400" />
+                                            {client.phone}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex flex-col items-end gap-1">
+                                        {client.company && (
+                                            <div className="flex items-center gap-1 text-xs text-gray-600 font-medium bg-gray-50 px-2 py-1 rounded">
+                                                <Building size={12} className="text-gray-400" />
+                                                {client.company}
+                                            </div>
+                                        )}
+                                        <div className="text-xs text-gray-300">-</div>
+                                    </div>
+                                    <ChevronRight size={20} className="text-gray-300" />
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* FAB Mobile */}
+                <button
+                    onClick={handleOpenCreate}
+                    className="md:hidden fixed bottom-6 right-5 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/40 flex items-center justify-center z-40 active:scale-95 transition-transform"
+                >
+                    <Plus size={28} />
+                </button>
+
+                {/* Desktop Table List */}
+                <div className="hidden md:block flex-1 overflow-y-auto p-6 pt-4">
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                         <table className="w-full text-left border-collapse">
                             <thead className="bg-gray-50 text-gray-600 text-sm font-semibold uppercase border-b border-gray-200 sticky top-0">
