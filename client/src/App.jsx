@@ -12,6 +12,7 @@ import MyConversations from './components/MyConversations';
 import DepartmentView from './components/DepartmentView';
 import TicketsView from './components/TicketsView';
 import ClientsView from './components/ClientsView';
+import AllConversationsView from './components/AllConversationsView';
 import io from 'socket.io-client';
 import axios from 'axios';
 
@@ -388,12 +389,25 @@ function App() {
             ) : currentView === 'departments' ? (
                 <DepartmentView currentUser={currentUser} />
             ) : currentView === 'all-conversations' ? (
-                <div className="flex items-center justify-center h-full text-gray-500">
-                    <div className="text-center">
-                        <p className="text-xl mb-2">🚧 Em Desenvolvimento</p>
-                        <p>Visão de todas as conversas (Admin)</p>
-                    </div>
-                </div>
+                <AllConversationsView
+                    onSelectConversation={(chatId) => {
+                        // Open chat logic
+                        // Need to fetch chat data if not available? 
+                        // Actually handleSelectChat (defined in MyConversations usage) might be adaptable
+                        // But here we might just set Active Chat directly
+                        // We will try to find in 'chats' state or create partial
+
+                        let chat = chats.find(c => c.id._serialized === chatId);
+                        if (!chat) {
+                            chat = {
+                                id: { _serialized: chatId },
+                                name: 'Carregando...',
+                                unreadCount: 0
+                            };
+                        }
+                        setActiveChat(chat);
+                    }}
+                />
             ) : currentView === 'tickets' ? (
                 <TicketsView
                     onOpenChat={async (chatId, ticketId) => {
