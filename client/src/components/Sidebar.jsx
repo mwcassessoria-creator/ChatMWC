@@ -43,98 +43,142 @@ const Sidebar = ({ status, onLogout, onNavigate, currentView, currentUser, stats
     };
 
     return (
-        <div className="w-64 bg-[#0f172a] text-gray-300 flex flex-col h-screen font-sans">
-            {/* Header */}
-            <div className="p-6">
-                <div className="flex items-center gap-3 mb-10">
-                    <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-900/20">
-                        {agentInfo?.name?.charAt(0)?.toUpperCase() || 'AD'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <h2 className="font-bold text-white leading-tight truncate">
-                            {agentInfo?.name || 'Agent Dashboard'}
-                        </h2>
-                        <div className="flex items-center gap-2 mt-0.5">
-                            <span className={`w-2 h-2 rounded-full ${getStatusColor()}`}></span>
-                            <span className="text-xs text-gray-400 font-medium">{getStatusText()}</span>
+        <>
+            {/* Desktop Sidebar */}
+            <div className="hidden md:flex w-64 bg-[#0f172a] text-gray-300 flex-col h-screen font-sans shrink-0">
+                {/* Header */}
+                <div className="p-6">
+                    <div className="flex items-center gap-3 mb-10">
+                        <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-900/20">
+                            {agentInfo?.name?.charAt(0)?.toUpperCase() || 'AD'}
                         </div>
-                        {agentInfo?.agent_departments && agentInfo.agent_departments.length > 0 && (
-                            <div className="mt-1 flex flex-wrap gap-1">
-                                {agentInfo.agent_departments.map((ad, idx) => (
-                                    <span
-                                        key={idx}
-                                        className="text-[10px] px-1.5 py-0.5 bg-blue-900/30 text-blue-300 rounded border border-blue-800/30"
-                                    >
-                                        {ad.departments?.name}
-                                    </span>
-                                ))}
+                        <div className="flex-1 min-w-0">
+                            <h2 className="font-bold text-white leading-tight truncate">
+                                {agentInfo?.name || 'Agent Dashboard'}
+                            </h2>
+                            <div className="flex items-center gap-2 mt-0.5">
+                                <span className={`w-2 h-2 rounded-full ${getStatusColor()}`}></span>
+                                <span className="text-xs text-gray-400 font-medium">{getStatusText()}</span>
                             </div>
-                        )}
+                            {agentInfo?.agent_departments && agentInfo.agent_departments.length > 0 && (
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                    {agentInfo.agent_departments.map((ad, idx) => (
+                                        <span
+                                            key={idx}
+                                            className="text-[10px] px-1.5 py-0.5 bg-blue-900/30 text-blue-300 rounded border border-blue-800/30"
+                                        >
+                                            {ad.departments?.name}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
+
+                    <div className="mb-4 text-xs font-bold text-gray-500 uppercase tracking-wider pl-3">
+                        Menu
+                    </div>
+
+                    <nav className="space-y-2">
+                        <NavItem
+                            icon={<MessageSquare size={20} />}
+                            label="Minhas Conversas"
+                            onClick={() => onNavigate?.('my-conversations')}
+                            active={currentView === 'my-conversations'}
+                            badge={stats?.queued > 0 ? stats.queued : null}
+                        />
+                        <NavItem
+                            icon={<TicketCheck size={20} />}
+                            label="Gestão de Tickets"
+                            onClick={() => onNavigate?.('tickets')}
+                            active={currentView === 'tickets'}
+                        />
+                        <NavItem
+                            icon={<Inbox size={20} />}
+                            label="Todas Conversas"
+                            onClick={() => onNavigate?.('conversations')}
+                            active={currentView === 'conversations'}
+                        />
+                        <NavItem
+                            icon={<Users size={20} />}
+                            label="Clientes"
+                            onClick={() => onNavigate?.('clients')}
+                            active={currentView === 'clients'}
+                        />
+                        <NavItem
+                            icon={<Users size={20} />}
+                            label="Atendentes"
+                            onClick={() => onNavigate?.('agents')}
+                            active={currentView === 'agents'}
+                        />
+                        <NavItem
+                            icon={<LayoutDashboard size={20} />}
+                            label="Departamentos"
+                            onClick={() => onNavigate?.('departments')}
+                            active={currentView === 'departments'}
+                        />
+                    </nav>
                 </div>
 
-                <div className="mb-4 text-xs font-bold text-gray-500 uppercase tracking-wider pl-3">
-                    Menu
+                {/* Bottom Actions */}
+                <div className="mt-auto p-6 space-y-2">
+                    <NavItem
+                        icon={<UserPlus size={20} />}
+                        label="Cadastrar Atendente"
+                        onClick={() => window.dispatchEvent(new CustomEvent('openAgentRegistration'))}
+                    />
+                    <NavItem icon={<Settings size={20} />} label="Settings" />
+                    <button
+                        onClick={onLogout}
+                        className="w-full flex items-center gap-3 px-3 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all group"
+                    >
+                        <LogOut size={20} className="group-hover:text-red-400 transition-colors" />
+                        <span className="font-medium">Sair</span>
+                    </button>
                 </div>
-
-                <nav className="space-y-2">
-                    <NavItem
-                        icon={<MessageSquare size={20} />}
-                        label="Minhas Conversas"
-                        onClick={() => onNavigate?.('my-conversations')}
-                        active={currentView === 'my-conversations'}
-                        badge={stats?.queued > 0 ? stats.queued : null}
-                    />
-                    <NavItem
-                        icon={<Inbox size={20} />}
-                        label="Todas Conversas"
-                        onClick={() => onNavigate?.('conversations')}
-                        active={currentView === 'conversations'}
-                    />
-                    <NavItem
-                        icon={<Users size={20} />}
-                        label="Clientes"
-                        onClick={() => onNavigate?.('clients')}
-                        active={currentView === 'clients'}
-                    />
-                    <NavItem
-                        icon={<Users size={20} />}
-                        label="Atendentes"
-                        onClick={() => onNavigate?.('agents')}
-                        active={currentView === 'agents'}
-                    />
-                    <NavItem
-                        icon={<LayoutDashboard size={20} />}
-                        label="Departamentos"
-                        onClick={() => onNavigate?.('departments')}
-                        active={currentView === 'departments'}
-                    />
-                    <NavItem
-                        icon={<TicketCheck size={20} />}
-                        label="Gestão de Tickets"
-                        onClick={() => onNavigate?.('tickets')}
-                        active={currentView === 'tickets'}
-                    />
-                </nav>
             </div>
 
-            {/* Bottom Actions */}
-            <div className="mt-auto p-6 space-y-2">
-                <NavItem
-                    icon={<UserPlus size={20} />}
-                    label="Cadastrar Atendente"
-                    onClick={() => window.dispatchEvent(new CustomEvent('openAgentRegistration'))}
+            {/* Mobile Bottom Nav */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#0f172a] text-gray-400 border-t border-gray-800 z-50 flex justify-around items-center px-2 py-2 pb-safe shadow-xl">
+                <NavItemMobile
+                    icon={<MessageSquare size={20} />}
+                    label="Chat"
+                    onClick={() => onNavigate?.('my-conversations')}
+                    active={currentView === 'my-conversations'}
+                    badge={stats?.queued > 0 ? stats.queued : null}
                 />
-                <NavItem icon={<Settings size={20} />} label="Settings" />
-                <button
-                    onClick={onLogout}
-                    className="w-full flex items-center gap-3 px-3 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all group"
-                >
-                    <LogOut size={20} className="group-hover:text-red-400 transition-colors" />
-                    <span className="font-medium">Sair</span>
+                <NavItemMobile
+                    icon={<TicketCheck size={20} />}
+                    label="Tickets"
+                    onClick={() => onNavigate?.('tickets')}
+                    active={currentView === 'tickets'}
+                />
+                <NavItemMobile
+                    icon={<Inbox size={20} />}
+                    label="Todas"
+                    onClick={() => onNavigate?.('conversations')}
+                    active={currentView === 'conversations'}
+                />
+                <NavItemMobile
+                    icon={<Users size={20} />}
+                    label="Clientes"
+                    onClick={() => onNavigate?.('clients')}
+                    active={currentView === 'clients'}
+                />
+                <NavItemMobile
+                    icon={<LayoutDashboard size={20} />}
+                    label="Deptos"
+                    onClick={() => onNavigate?.('departments')}
+                    active={currentView === 'departments'}
+                />
+                {/* Simple logout for mobile */}
+                <button onClick={onLogout} className="flex flex-col items-center gap-1 p-2 rounded-lg text-red-400">
+                    <LogOut size={20} />
+                    <span className="text-[10px] font-medium">Sair</span>
                 </button>
             </div>
-        </div>
+            <div className="md:hidden h-16 shrink-0"></div>
+        </>
     );
 };
 
@@ -164,5 +208,23 @@ const NavItem = ({ icon, label, active, count, onClick, badge }) => {
         </button>
     );
 };
+
+const NavItemMobile = ({ icon, label, active, onClick, badge }) => {
+    return (
+        <button
+            onClick={onClick}
+            className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-all relative ${active ? 'text-blue-400 bg-white/5' : 'hover:text-gray-200'
+                }`}
+        >
+            <div className="relative">
+                {icon}
+                {badge && (
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#0f172a]"></span>
+                )}
+            </div>
+            <span className="text-[10px] font-medium">{label}</span>
+        </button>
+    )
+}
 
 export default Sidebar;

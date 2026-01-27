@@ -275,7 +275,7 @@ function App() {
     }
 
     return (
-        <div className="flex h-screen bg-gray-50 font-sans">
+        <div className="flex flex-col md:flex-row h-screen bg-gray-50 font-sans overflow-hidden">
             <Sidebar
                 status={status}
                 onLogout={handleLogout}
