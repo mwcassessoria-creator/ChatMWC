@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Users, Settings, UserPlus, LogOut, LayoutDashboard, Inbox } from 'lucide-react';
+import { MessageSquare, Users, Settings, UserPlus, LogOut, LayoutDashboard, Inbox, TicketCheck } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -109,6 +109,12 @@ const Sidebar = ({ status, onLogout, onNavigate, currentView, currentUser, stats
                         onClick={() => onNavigate?.('departments')}
                         active={currentView === 'departments'}
                     />
+                    <NavItem
+                        icon={<TicketCheck size={20} />}
+                        label="Gestão de Tickets"
+                        onClick={() => onNavigate?.('tickets')}
+                        active={currentView === 'tickets'}
+                    />
                 </nav>
             </div>
 
@@ -149,8 +155,8 @@ const NavItem = ({ icon, label, active, count, onClick, badge }) => {
             </div>
             {(count || badge) && (
                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${badge
-                        ? 'bg-red-500 text-white animate-pulse'
-                        : (active ? 'bg-blue-500/10 text-blue-400' : 'bg-gray-800 text-gray-500')
+                    ? 'bg-red-500 text-white animate-pulse'
+                    : (active ? 'bg-blue-500/10 text-blue-400' : 'bg-gray-800 text-gray-500')
                     }`}>
                     {badge || count}
                 </span>

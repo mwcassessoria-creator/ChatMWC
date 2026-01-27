@@ -1197,6 +1197,72 @@ app.post('/api/conversations/:id/assign-to-me', async (req, res) => {
     }
 });
 
+// Get Tickets with Filters (Advanced Search)
+app.get('/api/tickets', async (req, res) => {
+    try {
+        const { startDate, endDate, status, departmentId, agentId } = req.query;
+
+        let query = supabase
+            .from('tickets')
+            .select(`
+                id,
+                status,
+                created_at,
+                closed_at,
+                subject,
+                priority,
+                department_id,
+                agent_id,
+                conversation_id,
+                conversations (
+                    id,
+                    name,
+                    phone,
+                    chat_id
+                ),
+                agents (
+                    id,
+                    name,
+                    email
+                ),
+                departments (
+                    id,
+                    name
+                )
+            `)
+            .order('created_at', { ascending: false });
+
+        // Apply Filters
+        if (startDate) {
+            query = query.gte('created_at', startDate);
+        }
+        if (endDate) {
+            // Add time to end date to include the whole day
+            query = query.lte('created_at', `${endDate}T23:59:59`);
+        }
+        if (status && status !== 'prioridade') { // 'prioridade' handled separately or ignore
+            // If comma separated
+            const statuses = status.split(',');
+            query = query.in('status', statuses);
+        }
+        if (departmentId) {
+            query = query.eq('department_id', departmentId);
+        }
+        if (agentId) {
+            query = query.eq('agent_id', agentId);
+        }
+
+        const { data: tickets, error } = await query;
+
+        if (error) throw error;
+
+        res.json(tickets || []);
+    } catch (error) {
+        console.error('Error fetching tickets:', error);
+        res.status(500).json({ error: 'Failed to fetch tickets' });
+    }
+});
+
 // Close/finish conversation (Close Ticket)
 app.post('/api/conversations/:id/close', async (req, res) => {
     console.log('[CLOSE] Request received:', { conversationId: req.params.id, body: req.body });

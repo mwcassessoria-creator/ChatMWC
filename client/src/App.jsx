@@ -10,6 +10,7 @@ import AgentRegistration from './components/AgentRegistration';
 import AgentsView from './components/AgentsView';
 import MyConversations from './components/MyConversations';
 import DepartmentView from './components/DepartmentView';
+import TicketsView from './components/TicketsView';
 import ClientsView from './components/ClientsView';
 import io from 'socket.io-client';
 import axios from 'axios';
@@ -390,6 +391,43 @@ function App() {
                         <p>Visão de todas as conversas (Admin)</p>
                     </div>
                 </div>
+            ) : currentView === 'tickets' ? (
+                <TicketsView
+                    onOpenChat={async (chatId, ticketId) => {
+                        // Switch view and open chat
+                        setCurrentView('my-conversations');
+
+                        // Try to find in cache first
+                        let chat = chats.find(c => c.id._serialized === chatId);
+
+                        // If not found (rare), fetch from API
+                        if (!chat) {
+                            try {
+                                const { data: conv } = await axios.get(`${API_URL}/api/conversations/lookup/${chatId}`);
+                                if (conv) {
+                                    chat = {
+                                        id: { _serialized: chatId },
+                                        conversationId: conv.id,
+                                        name: conv.name,
+                                        isGroup: false,
+                                        unreadCount: 0
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn('Lookup failed for ticket view chat open:', e);
+                            }
+                        }
+
+                        if (chat) {
+                            // Clone and set active
+                            const newActiveChat = {
+                                ...chat,
+                                selectedTicketId: ticketId // Pass ticket ID to view history if needed, or null for latest
+                            };
+                            setActiveChat(newActiveChat);
+                        }
+                    }}
+                />
             ) : (
                 <div className="flex flex-1 overflow-hidden">
                     <ChatList
