@@ -336,41 +336,44 @@ function App() {
                 />
             ) : currentView === 'my-conversations' ? (
                 <div className="flex flex-1 overflow-hidden">
-                    <MyConversations
-                        currentUser={currentUser}
-                        socket={socket} // Pass socket for realtime updates
-                        onSelectConversation={(chatId, conversationId, ticketId, conversationData) => {
-                            let chat = chats.find(c => c.id._serialized === chatId);
+                    <div className={`${activeChat ? 'hidden md:flex' : 'flex'} h-full w-full md:w-auto flex-col border-r border-gray-200 bg-gray-50`}>
+                        <MyConversations
+                            currentUser={currentUser}
+                            socket={socket} // Pass socket for realtime updates
+                            onSelectConversation={(chatId, conversationId, ticketId, conversationData) => {
+                                let chat = chats.find(c => c.id._serialized === chatId);
 
-                            // Fallback if chat not in main list but we have data
-                            if (!chat && conversationData) {
-                                chat = {
-                                    id: { _serialized: chatId },
-                                    name: conversationData.name,
-                                    isGroup: false,
-                                    unreadCount: 0
-                                };
-                            }
+                                // Fallback if chat not in main list but we have data
+                                if (!chat && conversationData) {
+                                    chat = {
+                                        id: { _serialized: chatId },
+                                        name: conversationData.name,
+                                        isGroup: false,
+                                        unreadCount: 0
+                                    };
+                                }
 
-                            if (chat) {
-                                // Clone to ensure React detects state change
-                                const newActiveChat = {
-                                    ...chat,
-                                    conversationId: conversationId,
-                                    selectedTicketId: ticketId
-                                };
-                                setActiveChat(newActiveChat);
-                            } else {
-                                console.warn('Chat not found for ID:', chatId);
-                            }
-                        }}
-                    />
+                                if (chat) {
+                                    // Clone to ensure React detects state change
+                                    const newActiveChat = {
+                                        ...chat,
+                                        conversationId: conversationId,
+                                        selectedTicketId: ticketId
+                                    };
+                                    setActiveChat(newActiveChat);
+                                } else {
+                                    console.warn('Chat not found for ID:', chatId);
+                                }
+                            }}
+                        />
+                    </div>
                     {activeChat ? (
                         <ChatWindow
                             chat={activeChat}
                             currentUser={currentUser}
                             messages={messages}
                             onSendMessage={handleSendMessage}
+                            onClose={() => setActiveChat(null)}
                             onCloseTicket={handleCloseTicket}
                             onTransferTicket={handleTransferTicket}
                             onAssignToMe={(convId) => autoAssignToMe(convId)}

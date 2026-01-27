@@ -106,7 +106,7 @@ function MyConversations({ currentUser, onSelectConversation, socket, onUpdateSt
     }
 
     return (
-        <div className="w-96 flex flex-col h-full bg-gray-50 border-r border-gray-200">{/* Changed from full width to fixed 384px */}
+        <div className="w-full md:w-96 flex flex-col h-full bg-gray-50 border-r border-gray-200">{/* Changed from full width to fixed 384px */}
             {/* Header */}
             <div className="bg-white border-b border-gray-200 p-4">
                 <h2 className="text-xl font-semibold text-gray-800 mb-4">Minhas Conversas</h2>
