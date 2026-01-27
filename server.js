@@ -852,17 +852,35 @@ app.get('/api/conversations/my-conversations', async (req, res) => {
     }
 });
 
+// Get all departments
+app.get('/api/departments', async (req, res) => {
+    try {
+        const { data: departments, error } = await supabase
+            .from('departments')
+            .select('*')
+            .order('name', { ascending: true });
+
+        if (error) throw error;
+
+        res.json(departments || []);
+    } catch (error) {
+        console.error('Error fetching departments:', error);
+        res.status(500).json({ error: 'Failed to fetch departments' });
+    }
+});
+
 // Get conversations by department
 app.get('/api/departments/:id/conversations', async (req, res) => {
     try {
         const { id } = req.params;
 
-        const { data: assignments, error } = await supabase
-            .from('conversation_assignments')
+        // Get tickets for this department
+        const { data: tickets, error } = await supabase
+            .from('tickets')
             .select(`
                 id,
                 status,
-                assigned_at,
+                created_at,
                 agent_id,
                 conversation_id,
                 conversations (
@@ -881,12 +899,23 @@ app.get('/api/departments/:id/conversations', async (req, res) => {
                 )
             `)
             .eq('department_id', id)
-            .in('status', ['active', 'queued', 'closed'])
-            .order('assigned_at', { ascending: false });
+            .eq('status', 'open')
+            .order('created_at', { ascending: false });
 
         if (error) throw error;
 
-        res.json(assignments || []);
+        // Transform to match frontend expectations
+        const assignments = tickets?.map(ticket => ({
+            id: ticket.id,
+            status: ticket.agent_id ? 'active' : 'queued',
+            assigned_at: ticket.created_at,
+            agent_id: ticket.agent_id,
+            conversation_id: ticket.conversation_id,
+            conversations: ticket.conversations,
+            agents: ticket.agents
+        })) || [];
+
+        res.json(assignments);
     } catch (error) {
         console.error('Error fetching department conversations:', error);
         res.status(500).json({ error: 'Failed to fetch conversations' });
