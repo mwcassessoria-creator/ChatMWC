@@ -46,6 +46,7 @@ const TicketsView = ({ onOpenChat }) => {
             if (filters.status) params.status = filters.status;
             if (filters.departmentId) params.departmentId = filters.departmentId;
             if (filters.agentId) params.agentId = filters.agentId;
+            if (filters.subject) params.subject = filters.subject;
 
             const response = await axios.get(`${API_URL}/api/tickets`, { params });
             setTickets(response.data);
@@ -150,6 +151,18 @@ const TicketsView = ({ onOpenChat }) => {
                         </select>
                     </div>
 
+                    {/* Subject */}
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1">Assunto</label>
+                        <input
+                            type="text"
+                            placeholder="Buscar por assunto..."
+                            className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                            value={filters.subject || ''}
+                            onChange={(e) => handleFilterChange('subject', e.target.value)}
+                        />
+                    </div>
+
                     {/* Search Button */}
                     <div className="flex items-end">
                         <button
@@ -171,6 +184,7 @@ const TicketsView = ({ onOpenChat }) => {
                         <thead>
                             <tr className="bg-slate-50 border-b text-slate-500 text-xs uppercase tracking-wider">
                                 <th className="p-4 font-semibold">Ticket ID</th>
+                                <th className="p-4 font-semibold">Assunto</th>
                                 <th className="p-4 font-semibold">Data Criação</th>
                                 <th className="p-4 font-semibold">Cliente</th>
                                 <th className="p-4 font-semibold">Departamento</th>
@@ -197,6 +211,9 @@ const TicketsView = ({ onOpenChat }) => {
                                     <tr key={ticket.id} className="hover:bg-slate-50 transition-colors">
                                         <td className="p-4 font-mono text-xs text-blue-600 font-medium">
                                             #{ticket.id.slice(0, 8)}
+                                        </td>
+                                        <td className="p-4 font-medium text-gray-700">
+                                            {ticket.subject || <span className="text-gray-400 italic">Sem assunto</span>}
                                         </td>
                                         <td className="p-4">
                                             <div className="flex flex-col">

@@ -1200,7 +1200,7 @@ app.post('/api/conversations/:id/assign-to-me', async (req, res) => {
 // Get Tickets with Filters (Advanced Search)
 app.get('/api/tickets', async (req, res) => {
     try {
-        const { startDate, endDate, status, departmentId, agentId } = req.query;
+        const { startDate, endDate, status, departmentId, agentId, subject } = req.query;
 
         let query = supabase
             .from('tickets')
@@ -1210,7 +1210,6 @@ app.get('/api/tickets', async (req, res) => {
                 created_at,
                 closed_at,
                 subject,
-                priority,
                 department_id,
                 agent_id,
                 conversation_id,
@@ -1241,9 +1240,11 @@ app.get('/api/tickets', async (req, res) => {
             query = query.lte('created_at', `${endDate}T23:59:59`);
         }
         if (status && status !== 'prioridade') { // 'prioridade' handled separately or ignore
-            // If comma separated
             const statuses = status.split(',');
             query = query.in('status', statuses);
+        }
+        if (subject) {
+            query = query.ilike('subject', `%${subject}%`);
         }
         if (departmentId) {
             query = query.eq('department_id', departmentId);
