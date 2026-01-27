@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Phone, Video, MoreVertical, Paperclip, Smile, XCircle, Edit2, Save, Building, ArrowRightLeft } from 'lucide-react';
+import { Send, Phone, Video, MoreVertical, Paperclip, Smile, XCircle, Edit2, Save, Building, ArrowRightLeft, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import EmojiPicker from 'emoji-picker-react';
 import TransferModal from './TransferModal';
@@ -156,16 +156,20 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
 
     // Message Component
     const Message = ({ isMe, name, time, text, hasMedia, mediaUrl, mediaType }) => (
-        <div className={`flex gap-4 ${isMe ? 'flex-row-reverse' : ''}`}>
-            <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${isMe ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-600'}`}>
-                {name.charAt(0)}
-            </div>
-            <div className={`max-w-[60%] ${isMe ? 'items-end' : 'items-start'} flex flex-col`}>
-                <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-bold text-gray-900">{name}</span>
-                    <span className="text-xs text-gray-400">{time}</span>
+        <div className={`flex gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'} group`}>
+            {/* Avatar - Bottom Aligned */}
+            <div className="flex flex-col justify-end">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shadow-sm ${isMe ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>
+                    {name.charAt(0)}
                 </div>
-                <div className={`p-3 rounded-2xl text-sm ${isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white border border-gray-200 text-gray-800 rounded-tl-none shadow-sm'}`}>
+            </div>
+
+            <div className={`flex flex-col max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`}>
+                {/* Bubble */}
+                <div className={`px-4 py-3 text-sm shadow-sm relative break-words ${isMe
+                    ? 'bg-blue-600 text-white rounded-2xl rounded-br-sm'
+                    : 'bg-white text-gray-800 border border-gray-100 rounded-2xl rounded-bl-sm'
+                    }`}>
                     {hasMedia && mediaUrl ? (
                         <div className="space-y-2">
                             {mediaType?.includes('image') ? (
@@ -176,50 +180,84 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
                                     download
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className={`flex items-center gap-2 ${isMe ? 'text-white hover:underline' : 'text-blue-600 hover:underline'}`}
+                                    className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${isMe ? 'bg-blue-700/50 hover:bg-blue-700' : 'bg-gray-50 hover:bg-gray-100'
+                                        }`}
                                 >
-                                    <Paperclip size={16} />
-                                    {text || 'Baixar arquivo'}
+                                    <div className={`p-2 rounded-full ${isMe ? 'bg-white/20' : 'bg-blue-100 text-blue-600'}`}>
+                                        <Paperclip size={16} />
+                                    </div>
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="font-medium truncate text-xs opacity-90">{text || 'Documento'}</span>
+                                        <span className={`text-[10px] ${isMe ? 'text-blue-200' : 'text-blue-500'}`}>Baixar Arquivo</span>
+                                    </div>
                                 </a>
                             )}
                             {text && mediaType?.includes('image') && <div className="mt-2">{text}</div>}
                         </div>
                     ) : (
-                        text
+                        <p className="whitespace-pre-wrap leading-relaxed">{text}</p>
                     )}
+                </div>
+
+                {/* Meta Info - Below Bubble */}
+                <div className={`flex items-center gap-1 mt-1 px-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                    <span className="text-[10px] text-gray-400 font-medium">{name}</span>
+                    <span className="text-[10px] text-gray-300">•</span>
+                    <span className="text-[10px] text-gray-400">{time}</span>
                 </div>
             </div>
         </div>
     );
 
     return (
-        <div className="flex-1 flex flex-col h-screen bg-white">
+        <div className="flex-1 flex flex-col h-full bg-white">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between shadow-sm z-10">
-                <div className="flex items-center gap-4 flex-1">
-                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-600 text-xl">
+            {/* Header */}
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between shadow-sm z-10 sticky top-0 bg-white/95 backdrop-blur-sm">
+                <div className="flex items-center gap-3 flex-1 overflow-hidden">
+                    {/* Back Button (Mobile Only) */}
+                    <button onClick={onClose} className="md:hidden p-2 -ml-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-full transition-colors">
+                        <ArrowLeft size={22} />
+                    </button>
+
+                    <div className="w-10 h-10 rounded-full bg-blue-100 flex-shrink-0 flex items-center justify-center font-bold text-blue-600 text-lg shadow-sm border border-blue-50">
                         {chat.name?.charAt(0) || '?'}
                     </div>
-                    <div className="flex-1">
-                        <div>
-                            <h2 className="font-bold text-lg">{chat.name}</h2>
-                            {chat.company && <span className="bg-gray-100 text-xs px-2 py-0.5 rounded">{chat.company}</span>}
+
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                        <h2 className="font-bold text-gray-900 truncate leading-tight text-[15px]">{chat.name}</h2>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.4)]"></div>
+                            <span className="text-[11px] text-green-600 font-medium">Online</span>
+                            {chat.company && (
+                                <>
+                                    <span className="text-gray-300 text-[10px]">•</span>
+                                    <span className="text-[10px] text-gray-500 truncate max-w-[100px]">{chat.company}</span>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
-                <div className="flex items-center gap-3">
-                    <button onClick={() => setShowEditModal(true)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition">
+
+                <div className="flex items-center gap-1 pl-2">
+                    <button onClick={() => setShowEditModal(true)} className="p-2 text-gray-400 hover:text-blue-500 rounded-full hover:bg-blue-50 transition-all">
                         <Edit2 size={18} />
                     </button>
-                    <button onClick={() => setShowTransferModal(true)} className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg flex items-center gap-2">
-                        <ArrowRightLeft size={18} /> Transferir
+                    <button onClick={() => setShowTransferModal(true)} className="p-2 text-gray-400 hover:text-blue-500 rounded-full hover:bg-blue-50 transition-all">
+                        <ArrowRightLeft size={18} />
                     </button>
                     {hasActiveTicket ? (
-                        <button onClick={handleCloseConversation} disabled={isClosing} className="px-4 py-2 bg-red-600 text-white rounded-lg flex items-center gap-2">
-                            <XCircle size={18} /> {isClosing ? 'Encerrando...' : 'Encerrar'}
+                        <button
+                            onClick={handleCloseConversation}
+                            disabled={isClosing}
+                            className="bg-red-50 hover:bg-red-100 text-red-600 rounded-full px-3 py-1.5 flex items-center gap-1.5 text-xs font-bold transition-all ml-1"
+                        >
+                            <XCircle size={14} />
+                            <span className="hidden sm:inline">Encerrar</span>
+                            <span className="sm:hidden">Fim</span>
                         </button>
                     ) : (
-                        <span className="px-4 py-2 bg-gray-100 text-gray-500 rounded-lg flex items-center gap-2"><XCircle size={18} /> Encerrado</span>
+                        <span className="bg-gray-100 text-gray-400 text-[10px] px-2 py-1 rounded-full font-bold border border-gray-200 ml-1">FECHADO</span>
                     )}
                 </div>
             </div>
@@ -242,11 +280,11 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
             </div>
 
             {/* Input Area */}
-            <div className="bg-white p-4 border-t border-gray-200 relative">
+            <div className="bg-white p-3 md:p-4 border-t border-gray-100 relative shadow-[0_-2px_10px_rgba(0,0,0,0.02)]">
                 {showEmojiPicker && (
                     <>
                         <div className="fixed inset-0 z-40" onClick={() => setShowEmojiPicker(false)}></div>
-                        <div className="absolute bottom-20 left-4 z-50">
+                        <div className="absolute bottom-20 left-4 z-50 animate-in fade-in slide-in-from-bottom-4 duration-200">
                             <EmojiPicker
                                 onEmojiClick={(emojiData) => {
                                     setInputText(prev => prev + emojiData.emoji);
@@ -260,25 +298,25 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
                 )}
 
                 {assignedToOther ? (
-                    <div className="flex items-center justify-center p-4 bg-gray-100 rounded-lg border border-gray-200 text-gray-500">
-                        <span className="font-medium mr-2">🔒 Conversa em atendimento por outro agente</span>
+                    <div className="flex items-center justify-center p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300 text-gray-500">
+                        <span className="font-medium flex items-center gap-2 text-sm"><span className="text-lg">🔒</span> Em atendimento por outro agente</span>
                     </div>
                 ) : isUnassigned ? (
-                    <div className="flex items-center justify-center">
+                    <div className="flex items-center justify-center py-2">
                         <button
                             onClick={handleAssign}
-                            className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-8 rounded-full shadow-lg transition-all transform hover:scale-105 flex items-center gap-2"
+                            className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-8 rounded-full shadow-lg shadow-emerald-200 transition-all transform hover:scale-[1.02] active:scale-95 flex items-center gap-2 w-full md:w-auto justifying-center"
                         >
                             <ArrowRightLeft size={20} />
-                            Fazer Atendimento
+                            <span>Iniciar Atendimento</span>
                         </button>
                     </div>
                 ) : (
-                    <form onSubmit={handleSend} className="flex gap-2 items-center">
+                    <form onSubmit={handleSend} className="flex gap-2 items-end">
                         <button
                             type="button"
                             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                            className={`p-2 rounded-full hover:bg-gray-100 transition ${showEmojiPicker ? 'text-blue-500' : 'text-gray-500'}`}
+                            className={`p-2.5 rounded-full hover:bg-blue-50 transition-colors ${showEmojiPicker ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500'}`}
                         >
                             <Smile size={24} />
                         </button>
@@ -292,27 +330,33 @@ const ChatWindow = ({ chat, messages, onSendMessage, currentUser, onAssignToMe, 
                         <button
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
-                            className="text-gray-500 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition"
+                            className="text-gray-400 hover:text-blue-500 p-2.5 rounded-full hover:bg-blue-50 transition-colors"
                             disabled={isUploading}
                         >
                             <Paperclip size={24} className={isUploading ? "animate-pulse text-blue-500" : ""} />
                         </button>
 
-                        <input
-                            type="text"
-                            value={inputText}
-                            onChange={(e) => setInputText(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            placeholder="Digite uma mensagem..."
-                            className="flex-1 border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:border-blue-500"
-                            disabled={isUploading}
-                        />
+                        <div className="flex-1 bg-gray-100 rounded-[24px] flex items-center px-4 py-2 min-h-[44px] transition-all focus-within:ring-2 focus-within:ring-blue-100 focus-within:bg-white border border-transparent focus-within:border-blue-200">
+                            <input
+                                type="text"
+                                value={inputText}
+                                onChange={(e) => setInputText(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder="Digite uma mensagem..."
+                                className="w-full bg-transparent border-none focus:ring-0 text-[15px] text-gray-800 placeholder-gray-400 leading-relaxed"
+                                disabled={isUploading}
+                            />
+                        </div>
+
                         <button
                             type="submit"
                             disabled={!inputText.trim() || (!hasActiveTicket && !isUnassigned)}
-                            className={`p-2 rounded-full ${inputText.trim() && (hasActiveTicket || isUnassigned) ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                            className={`p-3 rounded-full shadow-md flex items-center justify-center transition-all transform active:scale-95 duration-200 ${inputText.trim() && (hasActiveTicket || isUnassigned)
+                                ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200 hover:shadow-lg'
+                                : 'bg-gray-100 text-gray-300 cursor-not-allowed shadow-none'
+                                }`}
                         >
-                            <Send size={20} />
+                            <Send size={20} className={inputText.trim() ? "ml-0.5" : ""} />
                         </button>
                     </form>
                 )}
