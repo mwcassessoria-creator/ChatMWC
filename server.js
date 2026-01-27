@@ -700,8 +700,72 @@ app.post('/api/send', upload.single('file'), async (req, res) => {
             .eq('chat_id', chatId) // DB stores the one we generated
             .single();
 
-        if (conversation) {
-            await saveMessageToSupabase(conversation.id, response, null, agentId);
+        let conversationId = conversation?.id;
+
+        // Auto-create conversation if not exists (for new chats initiated by agent)
+        if (!conversationId) {
+            console.log('[API Send] Conversation not found, creating new one...');
+            try {
+                // Formatting helper
+                const cleanPhone = targetChatId.replace(/\D/g, '');
+                let formattedName = `+${cleanPhone}`;
+
+                // Try to get info from WA
+                try {
+                    const contact = await client.getContactById(targetChatId);
+                    if (contact && (contact.name || contact.pushname)) {
+                        formattedName = contact.name || contact.pushname;
+                    }
+                } catch (e) {
+                    console.warn('[API Send] Could not fetch contact info:', e.message);
+                }
+
+                // A. Get or Create CLIENT
+                let customerId = null;
+                const { data: existingCustomer } = await supabase
+                    .from('customers')
+                    .select('id')
+                    .eq('phone', cleanPhone)
+                    .single();
+
+                if (existingCustomer) {
+                    customerId = existingCustomer.id;
+                } else {
+                    const { data: newCustomer } = await supabase
+                        .from('customers')
+                        .insert({ name: formattedName, phone: cleanPhone })
+                        .select()
+                        .single();
+                    customerId = newCustomer?.id;
+                }
+
+                // B. Create CONVERSATION
+                if (customerId) {
+                    const { data: newConv } = await supabase
+                        .from('conversations')
+                        .insert({
+                            chat_id: targetChatId,
+                            customer_id: customerId,
+                            name: formattedName,
+                            phone: cleanPhone,
+                            is_group: false,
+                            last_message_at: new Date().toISOString()
+                        })
+                        .select()
+                        .single();
+
+                    if (newConv) {
+                        conversationId = newConv.id;
+                        console.log('[API Send] Created new conversation:', conversationId);
+                    }
+                }
+            } catch (createError) {
+                console.error('[API Send] Error creating conversation:', createError);
+            }
+        }
+
+        if (conversationId) {
+            await saveMessageToSupabase(conversationId, response, null, agentId);
         }
 
         res.json(response);
@@ -899,7 +963,7 @@ app.get('/api/departments/:id/conversations', async (req, res) => {
                 )
             `)
             .eq('department_id', id)
-            .eq('status', 'open')
+            .in('status', ['open', 'closed', 'transferred'])
             .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -907,7 +971,9 @@ app.get('/api/departments/:id/conversations', async (req, res) => {
         // Transform to match frontend expectations
         const assignments = tickets?.map(ticket => ({
             id: ticket.id,
-            status: ticket.agent_id ? 'active' : 'queued',
+            status: ticket.status === 'open'
+                ? (ticket.agent_id ? 'active' : 'queued')
+                : ticket.status,
             assigned_at: ticket.created_at,
             agent_id: ticket.agent_id,
             conversation_id: ticket.conversation_id,
@@ -919,6 +985,84 @@ app.get('/api/departments/:id/conversations', async (req, res) => {
     } catch (error) {
         console.error('Error fetching department conversations:', error);
         res.status(500).json({ error: 'Failed to fetch conversations' });
+    }
+});
+
+// Lookup or Create Conversation by Chat ID (Fix for "Carregando..." and New Chats)
+app.get('/api/conversations/lookup/:chatId', async (req, res) => {
+    try {
+        const { chatId } = req.params;
+        const cleanPhone = chatId.replace(/\D/g, '');
+
+        // 1. Try to find existing conversation
+        const { data: conversation } = await supabase
+            .from('conversations')
+            .select('*')
+            .eq('chat_id', chatId)
+            .single();
+
+        if (conversation) {
+            return res.json(conversation);
+        }
+
+        // 2. Not found? Create it! (Logic synced with /api/send)
+        console.log(`[LOOKUP] Conversation not found for ${chatId}, creating...`);
+        let formattedName = `+${cleanPhone}`;
+
+        // Try to get info from WA
+        try {
+            const contact = await client.getContactById(chatId);
+            if (contact && (contact.name || contact.pushname)) {
+                formattedName = contact.name || contact.pushname;
+            }
+        } catch (e) {
+            console.warn('[LOOKUP] Could not fetch contact info:', e.message);
+        }
+
+        // A. Get or Create CLIENT
+        let customerId = null;
+        const { data: existingCustomer } = await supabase
+            .from('customers')
+            .select('id')
+            .eq('phone', cleanPhone)
+            .single();
+
+        if (existingCustomer) {
+            customerId = existingCustomer.id;
+        } else {
+            const { data: newCustomer } = await supabase
+                .from('customers')
+                .insert({ name: formattedName, phone: cleanPhone })
+                .select()
+                .single();
+            customerId = newCustomer?.id;
+        }
+
+        // B. Create CONVERSATION
+        if (customerId) {
+            const { data: newConv } = await supabase
+                .from('conversations')
+                .insert({
+                    chat_id: chatId,
+                    customer_id: customerId,
+                    name: formattedName,
+                    phone: cleanPhone,
+                    is_group: false,
+                    last_message_at: new Date().toISOString()
+                })
+                .select()
+                .single();
+
+            if (newConv) {
+                console.log('[LOOKUP] Created new conversation:', newConv.id);
+                return res.json(newConv);
+            }
+        }
+
+        res.status(404).json({ error: 'Could not create conversation' });
+    } catch (error) {
+        console.error('Error looking up conversation:', error);
+        res.status(500).json({ error: 'Lookup failed' });
     }
 });
 
