@@ -9,6 +9,7 @@ const TicketsView = ({ onOpenChat }) => {
     const [loading, setLoading] = useState(false);
     const [departments, setDepartments] = useState([]);
     const [agents, setAgents] = useState([]);
+    const [showFilters, setShowFilters] = useState(false);
 
     // Filters
     const [filters, setFilters] = useState({
@@ -112,15 +113,15 @@ const TicketsView = ({ onOpenChat }) => {
                     </div>
                     <button
                         type="button"
-                        onClick={() => { /* Toggle filters logic could go here */ }}
-                        className="h-[48px] w-[48px] bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-blue-200 shadow-lg active:scale-95 transition-transform shrink-0"
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={`h-[48px] w-[48px] rounded-xl flex items-center justify-center text-white shadow-lg active:scale-95 transition-all shrink-0 ${showFilters ? 'bg-blue-700 ring-2 ring-blue-300' : 'bg-blue-600 shadow-blue-200'}`}
                     >
-                        <SlidersHorizontal size={22} />
+                        {showFilters ? <XCircle size={22} /> : <SlidersHorizontal size={22} />}
                     </button>
                 </form>
 
-                {/* Desktop Filters (Hidden on Mobile unless toggled - for now hidden) */}
-                <form onSubmit={handleSearch} className="hidden md:grid grid-cols-1 md:grid-cols-5 gap-4">
+                {/* Desktop Filters (Hidden on Mobile unless toggled) */}
+                <form onSubmit={handleSearch} className={`${showFilters ? 'grid' : 'hidden'} md:grid grid-cols-1 md:grid-cols-5 gap-4`}>
                     {/* Date Range */}
                     <div className="col-span-2 flex gap-2">
                         <div className="flex-1">
