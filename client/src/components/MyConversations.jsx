@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Search, SlidersHorizontal, MessageCircle } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -96,6 +96,22 @@ function MyConversations({ currentUser, onSelectConversation, socket, onUpdateSt
         return `${days}d`;
     };
 
+    const getAvatarColor = (name = '?') => {
+        const colors = [
+            'bg-green-200 text-green-800',
+            'bg-purple-200 text-purple-800',
+            'bg-blue-200 text-blue-800',
+            'bg-orange-200 text-orange-800',
+            'bg-pink-200 text-pink-800',
+            'bg-cyan-200 text-cyan-800'
+        ];
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+            hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return colors[Math.abs(hash) % colors.length];
+    };
+
     if (loading || !currentUser) {
         return (
             <div className="flex items-center justify-center h-full">
@@ -108,134 +124,61 @@ function MyConversations({ currentUser, onSelectConversation, socket, onUpdateSt
 
     return (
         <div className="w-full md:w-96 flex flex-col h-full bg-gray-50 border-r border-gray-200">{/* Changed from full width to fixed 384px */}
-            {/* Header */}
-            {/* Header */}
-            <div className="bg-white border-b border-gray-100 pt-6 pb-2 px-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] z-10">
-                <h2 className="text-xl font-bold text-gray-800 mb-6">Minhas Conversas</h2>
+            {/* Header Clean */}
+            <div className="bg-white px-6 pt-6 pb-2 sticky top-0 z-10">
+                <h2 className="text-3xl font-bold text-gray-900 mb-4 tracking-tight">Mensagens</h2>
 
-                {/* Status Filters */}
-                <div className="flex gap-2 mb-5 overflow-x-auto pb-1 scrollbar-hide">
-                    {[
-                        { id: 'active', label: 'Em Andamento', count: activeCount, color: 'green' },
-                        { id: 'queued', label: 'Pendente', count: pendingCount, color: 'yellow' },
-                        { id: 'closed', label: 'Resolvidas', count: 0, color: 'gray' },
-                        { id: 'all', label: 'Todas', count: conversations.length, color: 'blue' }
-                    ].map(item => (
-                        <button
-                            key={item.id}
-                            onClick={() => setFilter(item.id)}
-                            className={`px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap flex items-center gap-2 transform active:scale-95 duration-200 ${filter === item.id
-                                    ? item.color === 'green' ? 'bg-green-500 text-white shadow-green-200 shadow-lg' :
-                                        item.color === 'yellow' ? 'bg-yellow-500 text-white shadow-yellow-200 shadow-lg' :
-                                            item.color === 'blue' ? 'bg-blue-600 text-white shadow-blue-200 shadow-lg' :
-                                                'bg-gray-800 text-white shadow-gray-300 shadow-lg'
-                                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
-                                }`}
-                        >
-                            {item.label}
-                            {item.count > 0 && item.id !== 'all' && item.id !== 'closed' && (
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${filter === item.id ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'
-                                    }`}>
-                                    {item.count}
-                                </span>
-                            )}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Sort & Secondary Filters */}
-                <div className="flex items-center gap-4 py-2 border-t border-gray-50">
-                    <button
-                        onClick={() => setSortBy('recent')}
-                        className={`text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${sortBy === 'recent'
-                                ? 'bg-blue-50 text-blue-600'
-                                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                            }`}
-                    >
-                        Mais Recentes
-                    </button>
-                    <button
-                        onClick={() => setSortBy('priority')}
-                        className={`text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${sortBy === 'priority'
-                                ? 'bg-blue-50 text-blue-600'
-                                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                            }`}
-                    >
-                        Prioridade
+                <div className="flex gap-3 mb-4">
+                    <div className="flex-1 relative">
+                        <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Pesquisar conversas..."
+                            className="w-full pl-10 pr-4 py-2 bg-gray-100/80 border-none rounded-xl text-gray-800 placeholder-gray-500 font-medium outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                        />
+                    </div>
+                    <button className="text-blue-500 hover:bg-blue-50 p-2 rounded-lg transition-colors">
+                        <SlidersHorizontal size={22} strokeWidth={2.5} />
                     </button>
                 </div>
             </div>
 
-            {/* Conversation List */}
+            {/* Conversation List Clean */}
             <div className="flex-1 overflow-y-auto">
                 {filteredConversations.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-                        <div className="w-24 h-24 bg-blue-50/50 rounded-3xl flex items-center justify-center mb-6">
-                            <MessageSquare size={48} className="text-blue-200" fill="currentColor" strokeWidth={1.5} />
-                        </div>
-                        <h3 className="text-lg font-bold text-blue-900/40 mb-2">Nenhuma conversa encontrada</h3>
-                        <p className="text-sm text-blue-900/20 max-w-[200px] leading-relaxed">
-                            Novas solicitações aparecerão aqui automaticamente.
-                        </p>
+                    <div className="flex flex-col items-center justify-center h-full p-8 text-center pt-20 opacity-60">
+                        <MessageCircle size={64} className="text-gray-300 mb-4" strokeWidth={1} />
+                        <p className="text-gray-400 font-medium">Nenhuma mensagem aqui</p>
                     </div>
                 ) : (
                     filteredConversations.map((conv) => (
                         <div
                             key={conv.id}
                             onClick={() => onSelectConversation(conv.conversations.chat_id, conv.conversation_id, conv.id, conv.conversations)}
-                            className="bg-white border-b border-gray-200 p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                            className="bg-white px-6 py-3 hover:bg-gray-50 cursor-pointer transition-colors flex items-center gap-4 group border-b border-gray-100 last:border-0"
                         >
-                            <div className="flex items-start justify-between">
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <h3 className="font-semibold text-gray-900 truncate">
-                                            {conv.conversations.name}
-                                        </h3>
-                                        {conv.conversations.unread_count > 0 && (
-                                            <span className="bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                                                {conv.conversations.unread_count}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="flex items-center gap-1 mb-1 text-xs text-mono text-gray-400">
-                                        #{conv.id.slice(0, 8)}
-                                        {conv.status === 'active' && (
-                                            <span className="text-green-600 font-bold ml-1">• Ativo</span>
-                                        )}
-                                        {conv.status === 'closed' && (
-                                            <span className="text-gray-500 font-medium ml-1">• Encerrado</span>
-                                        )}
-                                        {conv.status === 'transferred' && (
-                                            <span className="text-blue-500 font-medium ml-1">• Transferido</span>
-                                        )}
-                                    </div>
+                            {/* Avatar */}
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-base shrink-0 ${getAvatarColor(conv.conversations.name)}`}>
+                                {conv.conversations.name?.substring(0, 2).toUpperCase()}
+                            </div>
 
-                                    <p className="text-sm text-gray-600 mb-2 truncate">
-                                        {conv.conversations.phone}
-                                    </p>
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
-                                            {conv.departments?.name || 'Sem departamento'}
-                                        </span>
-                                        {conv.conversations.priority && conv.conversations.priority !== 'normal' && (
-                                            <span className={`text-xs px-2 py-1 rounded ${getPriorityColor(conv.conversations.priority)}`}>
-                                                {conv.conversations.priority}
-                                            </span>
-                                        )}
-                                        {conv.conversations.tags && conv.conversations.tags.map((tag, idx) => (
-                                            <span key={idx} className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
-                                                {tag}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div className="text-right ml-4">
-                                    <span className="text-xs text-gray-500 block">
+                            {/* Info */}
+                            <div className="flex-1 min-w-0">
+                                <div className="flex justify-between items-baseline mb-0.5">
+                                    <h3 className="font-bold text-gray-900 truncate text-[17px] leading-tight">
+                                        {conv.conversations.name}
+                                    </h3>
+                                    <span className="text-[13px] text-gray-400 font-medium whitespace-nowrap ml-2">
                                         {formatTime(conv.conversations.last_message_at)}
                                     </span>
-                                    {conv.status === 'closed' && conv.closed_at && (
-                                        <span className="text-[10px] text-gray-400 block mt-1">
-                                            Fim: {new Date(conv.closed_at).toLocaleDateString()}
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <p className="text-[15px] text-gray-500 truncate leading-relaxed">
+                                        Nenhuma mensagem
+                                    </p>
+                                    {conv.conversations.unread_count > 0 && (
+                                        <span className="bg-blue-500 text-white text-[10px] font-bold px-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full ml-2">
+                                            {conv.conversations.unread_count}
                                         </span>
                                     )}
                                 </div>
@@ -243,6 +186,13 @@ function MyConversations({ currentUser, onSelectConversation, socket, onUpdateSt
                         </div>
                     ))
                 )}
+            </div>
+
+            {/* FAB for new Chat (Optional) */}
+            <div className="absolute bottom-6 left-0 w-full flex justify-center pointer-events-none">
+                <button className="w-14 h-14 bg-white border border-blue-100 rounded-full shadow-lg shadow-blue-100 text-blue-500 flex items-center justify-center pointer-events-auto hover:scale-105 transition-transform active:scale-95">
+                    <MessageSquare size={26} strokeWidth={2.5} fill="#3b82f6" className="text-white" />
+                </button>
             </div>
         </div>
     );
