@@ -43,7 +43,7 @@ const Sidebar = ({ status, onLogout, onNavigate, currentView, currentUser, stats
     };
 
     return (
-        <>
+        <div className="flex-none">
             {/* Desktop Sidebar */}
             <div className="hidden md:flex w-64 bg-[#0f172a] text-gray-300 flex-col h-screen font-sans shrink-0">
                 {/* Header */}
@@ -178,7 +178,7 @@ const Sidebar = ({ status, onLogout, onNavigate, currentView, currentUser, stats
                 </button>
             </div>
             <div className="md:hidden h-16 shrink-0"></div>
-        </>
+        </div>
     );
 };
 
