@@ -96,6 +96,10 @@ client.on("qr", (qr) => {
 // Global cache for departments
 let departmentsCache = {};
 
+// Cache to prevent duplicate message processing
+const processedMessages = new Set();
+const MESSAGE_CACHE_TTL = 60000; // 1 minuto
+
 client.on("ready", async () => {
     console.log("✅ Tudo certo! WhatsApp conectado.");
     io.emit('ready');
@@ -283,6 +287,21 @@ async function saveMessageToSupabase(conversationId, msg, ticketId = null, agent
 
 client.on("message", async (msg) => {
     try {
+        // Prevent duplicate processing
+        const messageId = msg.id._serialized;
+        if (processedMessages.has(messageId)) {
+            console.log(`[DUPLICATE] Skipping already processed message: ${messageId}`);
+            return;
+        }
+
+        // Mark as processed
+        processedMessages.add(messageId);
+
+        // Clean up old entries after TTL
+        setTimeout(() => {
+            processedMessages.delete(messageId);
+        }, MESSAGE_CACHE_TTL);
+
         if (!msg.from || msg.from.endsWith("@g.us")) return;
         const chat = await msg.getChat();
         if (chat.isGroup) return;
@@ -360,10 +379,10 @@ client.on("message", async (msg) => {
 
         // 4. Department Selection Logic
         const body = msg.body.trim();
-        const menuOptions = ['Fiscal', 'Contábil', 'DP', 'Societário', 'Financeiro'];
+        const menuOptions = ['Fiscal', 'Contábil', 'DP', 'Societário', 'Financeiro', 'Alvarás/Licenças'];
         const selection = parseInt(body);
 
-        if (!isNaN(selection) && selection >= 1 && selection <= 5) {
+        if (!isNaN(selection) && selection >= 1 && selection <= 6) {
             const selectedDeptName = menuOptions[selection - 1];
             const deptId = departmentsCache[selectedDeptName];
 
@@ -452,7 +471,8 @@ client.on("message", async (msg) => {
                 `2. Contábil\n` +
                 `3. DP\n` +
                 `4. Societário\n` +
-                `5. Financeiro`
+                `5. Financeiro\n` +
+                `6. Alvarás/Licenças`
             );
             await saveMessageToSupabase(conversation.id, sentMsg2, ticket.id);
         }
@@ -1004,24 +1024,35 @@ app.post('/api/conversations/:id/close', async (req, res) => {
             return res.status(404).json({ error: 'Conversation not found' });
         }
 
-        // Get active ticket
+        // Get active ticket (most recent if multiple exist)
         console.log('[CLOSE] Looking for active ticket for conversation:', id);
-        const { data: ticket, error: ticketError } = await supabase
+        const { data: tickets, error: ticketError } = await supabase
             .from('tickets')
-            .select('id')
+            .select('id, created_at')
             .eq('conversation_id', id)
             .eq('status', 'open')
-            .single();
+            .order('created_at', { ascending: false });
 
-        console.log('[CLOSE] Ticket query result:', { ticket, ticketError });
+        console.log('[CLOSE] Ticket query result:', {
+            ticketsFound: tickets?.length || 0,
+            ticketError
+        });
 
-        if (ticketError || !ticket) {
+        if (ticketError || !tickets || tickets.length === 0) {
             console.log('[CLOSE] No active ticket found');
             return res.status(404).json({ error: 'No active ticket found to close' });
         }
 
-        // Close ticket
-        console.log('[CLOSE] Closing ticket:', ticket.id);
+        // Use the most recent ticket
+        const ticket = tickets[0];
+
+        // If there are multiple open tickets, log a warning
+        if (tickets.length > 1) {
+            console.warn(`[CLOSE] WARNING: Found ${tickets.length} open tickets for conversation ${id}. Closing all of them.`);
+        }
+
+        // Close ALL open tickets for this conversation
+        console.log('[CLOSE] Closing all open tickets for conversation:', id);
         const { subject } = req.body; // Get subject from request body
         const { error: closeError } = await supabase
             .from('tickets')
@@ -1030,10 +1061,11 @@ app.post('/api/conversations/:id/close', async (req, res) => {
                 closed_at: new Date().toISOString(),
                 subject: subject || null // Save subject if provided
             })
-            .eq('id', ticket.id);
+            .eq('conversation_id', id)
+            .eq('status', 'open'); // Close ALL open tickets
 
         if (closeError) {
-            console.error('[CLOSE] Error closing ticket:', closeError);
+            console.error('[CLOSE] Error closing tickets:', closeError);
             throw closeError;
         }
 
