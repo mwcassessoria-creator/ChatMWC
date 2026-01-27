@@ -16,7 +16,7 @@ function AllConversationsView({ onSelectConversation }) {
     const fetchAllConversations = async () => {
         try {
             setLoading(true);
-            const response = await axios.get(`${API_URL}/api/conversations`);
+            const response = await axios.get(`${API_URL}/api/chats`);
             // Ensure data is array
             setConversations(Array.isArray(response.data) ? response.data : []);
         } catch (error) {
@@ -45,11 +45,7 @@ function AllConversationsView({ onSelectConversation }) {
 
     const formatTime = (timestamp) => {
         if (!timestamp) return '';
-        const date = new Date(timestamp * 1000); // Usually timestamp is unix seconds in typical WA objects, check if ms
-        // If year is 1970, maybe it's ms? Let's heuristic.
-        if (date.getFullYear() === 1970) {
-            date.setTime(timestamp);
-        }
+        const date = new Date(timestamp * 1000); // timestamp is seconds from /api/chats
 
         const now = new Date();
         const diff = now - date;
@@ -121,12 +117,13 @@ function AllConversationsView({ onSelectConversation }) {
                                         {chat.name || 'Desconhecido'}
                                     </h3>
                                     <span className="text-[13px] text-gray-400 font-medium whitespace-nowrap ml-2">
-                                        {formatTime(chat.lastMessage?.timestamp || Date.now())}
+                                        {formatTime(chat.timestamp || Date.now() / 1000)}
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <p className="text-[15px] text-gray-500 truncate leading-relaxed">
-                                        {chat.lastMessage?.body || <span className="italic opacity-70">Nenhuma mensagem</span>}
+                                        {/* API /chats does not return body, show generic text */}
+                                        <span className="opacity-70">Ver conversa</span>
                                     </p>
                                     {chat.unreadCount > 0 && (
                                         <span className="bg-blue-500 text-white text-[10px] font-bold px-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full ml-2">
