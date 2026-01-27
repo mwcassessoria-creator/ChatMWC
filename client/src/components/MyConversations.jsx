@@ -108,67 +108,56 @@ function MyConversations({ currentUser, onSelectConversation, socket, onUpdateSt
     return (
         <div className="w-full md:w-96 flex flex-col h-full bg-gray-50 border-r border-gray-200">{/* Changed from full width to fixed 384px */}
             {/* Header */}
-            <div className="bg-white border-b border-gray-200 p-4">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">Minhas Conversas</h2>
+            {/* Header */}
+            <div className="bg-white border-b border-gray-100 pt-6 pb-2 px-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] z-10">
+                <h2 className="text-xl font-bold text-gray-800 mb-6">Minhas Conversas</h2>
 
-                {/* Filters */}
-                <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
-                    <button
-                        onClick={() => setFilter('active')}
-                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2 ${filter === 'active'
-                            ? 'bg-green-600 text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            }`}
-                    >
-                        Em Andamento
-                        {activeCount > 0 && <span className="bg-white text-green-600 px-1.5 rounded-full text-xs">{activeCount}</span>}
-                    </button>
-                    <button
-                        onClick={() => setFilter('queued')}
-                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2 ${filter === 'queued'
-                            ? 'bg-yellow-600 text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            }`}
-                    >
-                        Pendente
-                        {pendingCount > 0 && <span className="bg-red-500 text-white px-1.5 rounded-full text-xs animate-pulse">{pendingCount}</span>}
-                    </button>
-                    <button
-                        onClick={() => setFilter('closed')}
-                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${filter === 'closed'
-                            ? 'bg-gray-600 text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            }`}
-                    >
-                        Resolvidas
-                    </button>
-                    <button
-                        onClick={() => setFilter('all')}
-                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${filter === 'all'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            }`}
-                    >
-                        Todas ({conversations.length})
-                    </button>
+                {/* Status Filters */}
+                <div className="flex gap-2 mb-5 overflow-x-auto pb-1 scrollbar-hide">
+                    {[
+                        { id: 'active', label: 'Em Andamento', count: activeCount, color: 'green' },
+                        { id: 'queued', label: 'Pendente', count: pendingCount, color: 'yellow' },
+                        { id: 'closed', label: 'Resolvidas', count: 0, color: 'gray' },
+                        { id: 'all', label: 'Todas', count: conversations.length, color: 'blue' }
+                    ].map(item => (
+                        <button
+                            key={item.id}
+                            onClick={() => setFilter(item.id)}
+                            className={`px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap flex items-center gap-2 transform active:scale-95 duration-200 ${filter === item.id
+                                    ? item.color === 'green' ? 'bg-green-500 text-white shadow-green-200 shadow-lg' :
+                                        item.color === 'yellow' ? 'bg-yellow-500 text-white shadow-yellow-200 shadow-lg' :
+                                            item.color === 'blue' ? 'bg-blue-600 text-white shadow-blue-200 shadow-lg' :
+                                                'bg-gray-800 text-white shadow-gray-300 shadow-lg'
+                                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
+                                }`}
+                        >
+                            {item.label}
+                            {item.count > 0 && item.id !== 'all' && item.id !== 'closed' && (
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${filter === item.id ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'
+                                    }`}>
+                                    {item.count}
+                                </span>
+                            )}
+                        </button>
+                    ))}
                 </div>
 
-                {/* Sort */}
-                <div className="flex gap-2">
+                {/* Sort & Secondary Filters */}
+                <div className="flex items-center gap-4 py-2 border-t border-gray-50">
                     <button
                         onClick={() => setSortBy('recent')}
-                        className={`px-3 py-1 rounded text-sm ${sortBy === 'recent'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'text-gray-600 hover:bg-gray-100'
+                        className={`text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${sortBy === 'recent'
+                                ? 'bg-blue-50 text-blue-600'
+                                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
                             }`}
                     >
                         Mais Recentes
                     </button>
                     <button
                         onClick={() => setSortBy('priority')}
-                        className={`px-3 py-1 rounded text-sm ${sortBy === 'priority'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'text-gray-600 hover:bg-gray-100'
+                        className={`text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${sortBy === 'priority'
+                                ? 'bg-blue-50 text-blue-600'
+                                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
                             }`}
                     >
                         Prioridade
