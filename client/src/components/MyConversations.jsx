@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { MessageSquare } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -168,11 +169,14 @@ function MyConversations({ currentUser, onSelectConversation, socket, onUpdateSt
             {/* Conversation List */}
             <div className="flex-1 overflow-y-auto">
                 {filteredConversations.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                        <svg className="w-16 h-16 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
-                        <p>Nenhuma conversa encontrada</p>
+                    <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                        <div className="w-24 h-24 bg-blue-50/50 rounded-3xl flex items-center justify-center mb-6">
+                            <MessageSquare size={48} className="text-blue-200" fill="currentColor" strokeWidth={1.5} />
+                        </div>
+                        <h3 className="text-lg font-bold text-blue-900/40 mb-2">Nenhuma conversa encontrada</h3>
+                        <p className="text-sm text-blue-900/20 max-w-[200px] leading-relaxed">
+                            Novas solicitações aparecerão aqui automaticamente.
+                        </p>
                     </div>
                 ) : (
                     filteredConversations.map((conv) => (

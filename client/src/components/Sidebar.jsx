@@ -217,7 +217,7 @@ const NavItemMobile = ({ icon, label, active, onClick, badge }) => {
                 }`}
         >
             <div className="relative">
-                {icon}
+                {React.cloneElement(icon, { fill: active ? "currentColor" : "none" })}
                 {badge && (
                     <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#0f172a]"></span>
                 )}
