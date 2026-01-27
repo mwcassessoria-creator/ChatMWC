@@ -1164,6 +1164,26 @@ app.post('/api/conversations/:id/assign-to-me', async (req, res) => {
                 .from('tickets')
                 .update({ agent_id: agent.id })
                 .eq('id', activeTicket.id);
+        } else {
+            // No active ticket found (Conversation is closed/finished)
+            // Create NEW TICKET assigned to me immediately
+            console.log('[ASSIGN] No active ticket found, creating new one for agent:', agent.id);
+            const { data: newTicket, error: createError } = await supabase
+                .from('tickets')
+                .insert({
+                    conversation_id: id,
+                    status: 'open',
+                    agent_id: agent.id, // Assigned immediately
+                    department_id: null // Can be set later or inferred
+                })
+                .select()
+                .single();
+
+            if (createError) {
+                console.error('[ASSIGN] Check if error creating ticket:', createError);
+            } else {
+                console.log('[ASSIGN] Created new ticket:', newTicket.id);
+            }
         }
 
         res.json(finalAssignment);
