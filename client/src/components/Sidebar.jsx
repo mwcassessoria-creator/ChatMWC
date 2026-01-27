@@ -96,8 +96,8 @@ const Sidebar = ({ status, onLogout, onNavigate, currentView, currentUser, stats
                         <NavItem
                             icon={<Inbox size={20} />}
                             label="Todas Conversas"
-                            onClick={() => onNavigate?.('conversations')}
-                            active={currentView === 'conversations'}
+                            onClick={() => onNavigate?.('all-conversations')}
+                            active={currentView === 'all-conversations'}
                         />
                         <NavItem
                             icon={<Users size={20} />}
@@ -156,8 +156,8 @@ const Sidebar = ({ status, onLogout, onNavigate, currentView, currentUser, stats
                 <NavItemMobile
                     icon={<Inbox size={20} />}
                     label="Todas"
-                    onClick={() => onNavigate?.('conversations')}
-                    active={currentView === 'conversations'}
+                    onClick={() => onNavigate?.('all-conversations')}
+                    active={currentView === 'all-conversations'}
                 />
                 <NavItemMobile
                     icon={<Users size={20} />}
