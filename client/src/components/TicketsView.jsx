@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Filter, Search, Calendar, User, Building, ExternalLink, TicketCheck, XCircle, CheckCircle, Clock } from 'lucide-react';
+import { Filter, Search, Calendar, User, Building, ExternalLink, TicketCheck, XCircle, CheckCircle, Clock, Plus, SlidersHorizontal } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -89,16 +89,38 @@ const TicketsView = ({ onOpenChat }) => {
             {/* Header / Filters */}
             <div className="bg-white border-b p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
-                    <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                    <h1 className="text-xl md:text-2xl font-bold text-slate-800 flex items-center gap-2">
                         <TicketCheck className="text-blue-600" />
                         Gestão de Tickets
                     </h1>
-                    <span className="text-sm text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+                    <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full whitespace-nowrap">
                         {tickets.length} tickets encontrados
                     </span>
                 </div>
 
-                <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                {/* Mobile Search & Filter Actions */}
+                <form onSubmit={handleSearch} className="md:hidden flex gap-3 mb-2">
+                    <div className="flex-1 relative">
+                        <input
+                            type="text"
+                            placeholder="Buscar por assunto..."
+                            className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+                            value={filters.subject || ''}
+                            onChange={(e) => handleFilterChange('subject', e.target.value)}
+                        />
+                        <Search className="absolute left-3 top-3.5 text-gray-400" size={20} />
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => { /* Toggle filters logic could go here */ }}
+                        className="h-[48px] w-[48px] bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-blue-200 shadow-lg active:scale-95 transition-transform shrink-0"
+                    >
+                        <SlidersHorizontal size={22} />
+                    </button>
+                </form>
+
+                {/* Desktop Filters (Hidden on Mobile unless toggled - for now hidden) */}
+                <form onSubmit={handleSearch} className="hidden md:grid grid-cols-1 md:grid-cols-5 gap-4">
                     {/* Date Range */}
                     <div className="col-span-2 flex gap-2">
                         <div className="flex-1">
@@ -175,10 +197,59 @@ const TicketsView = ({ onOpenChat }) => {
                         </button>
                     </div>
                 </form>
+
             </div>
 
+            {/* Mobile Cards View */}
+            <div className="md:hidden flex-1 overflow-y-auto p-4 space-y-4 pb-24 bg-slate-50">
+                {loading ? (
+                    <div className="text-center p-8 text-gray-500">Carregando tickets...</div>
+                ) : tickets.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                        <TicketCheck size={48} className="mb-4 opacity-50" />
+                        <p>Nenhum ticket encontrado</p>
+                    </div>
+                ) : (
+                    tickets.map((ticket) => (
+                        <div key={ticket.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 relative">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="pr-2">
+                                    <h3 className="font-bold text-gray-900 text-lg leading-tight mb-1">
+                                        {ticket.subject || 'Sem Assunto'}
+                                    </h3>
+                                    <div className="flex flex-col">
+                                        <span className="text-gray-600 font-medium">{ticket.conversations?.name || 'Cliente'}</span>
+                                        <span className="text-gray-400 text-sm font-mono">{ticket.conversations?.phone}</span>
+                                    </div>
+                                </div>
+                                <div className="shrink-0 flex flex-col items-end gap-1">
+                                    {getStatusBadge(ticket.status)}
+                                    <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">
+                                        {ticket.created_at ? new Date(ticket.created_at).toLocaleDateString() : ''}
+                                        {/* Poderia usar time ago se tivesse lib */}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => onOpenChat(ticket.conversations?.chat_id, ticket.id)}
+                                className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-blue-200 shadow-md"
+                            >
+                                Ver Chat <ExternalLink size={18} />
+                            </button>
+                        </div>
+                    ))
+                )}
+            </div>
+
+            {/* Mobile Floating Action Button */}
+            <button className="md:hidden fixed bottom-24 right-5 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center z-40 transition-transform active:scale-95">
+                <Plus size={28} strokeWidth={2.5} />
+            </button>
+
             {/* Table */}
-            <div className="flex-1 overflow-auto p-6">
+            {/* Desktop Table View */}
+            <div className="hidden md:block flex-1 overflow-auto p-6">
                 <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
                     <table className="w-full text-left border-collapse">
                         <thead>
@@ -266,7 +337,7 @@ const TicketsView = ({ onOpenChat }) => {
                     </table>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 
