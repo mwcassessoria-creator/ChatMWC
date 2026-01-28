@@ -1487,6 +1487,152 @@ app.post('/api/conversations/:id/transfer', async (req, res) => {
     }
 });
 
+// Public Contact Form (Login Page)
+app.post('/api/public/contact', async (req, res) => {
+    try {
+        const { name, phone, reason } = req.body;
+
+        if (!name || !phone || !reason) {
+            return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
+        }
+
+        // 1. Sanitize Phone
+        const cleanPhone = phone.replace(/\D/g, '');
+        // Basic validation (BR phone length usually 10-11 digits)
+        if (cleanPhone.length < 10) {
+            return res.status(400).json({ error: 'Telefone inválido' });
+        }
+
+        // Ensure format 55+
+        let formattedPhone = cleanPhone;
+        if (!formattedPhone.startsWith('55')) {
+            formattedPhone = `55${formattedPhone}`;
+        }
+        const chatId = `${formattedPhone}@c.us`;
+
+        // 2. Upsert Customer
+        let customerId = null;
+        const { data: existingCustomer } = await supabase
+            .from('customers')
+            .select('id')
+            .eq('phone', formattedPhone)
+            .single();
+
+        if (existingCustomer) {
+            customerId = existingCustomer.id;
+            // Optionally update name if needed, but let's respect existing
+        } else {
+            const { data: newCustomer, error: custError } = await supabase
+                .from('customers')
+                .insert({
+                    name: name,
+                    phone: formattedPhone
+                })
+                .select()
+                .single();
+
+            if (custError) throw custError;
+            customerId = newCustomer.id;
+        }
+
+        // 3. Get or Create Conversation
+        let conversationId = null;
+        const { data: existingConv } = await supabase
+            .from('conversations')
+            .select('id')
+            .eq('chat_id', chatId)
+            .single();
+
+        if (existingConv) {
+            conversationId = existingConv.id;
+        } else {
+            const { data: newConv, error: convError } = await supabase
+                .from('conversations')
+                .insert({
+                    chat_id: chatId,
+                    customer_id: customerId,
+                    name: name,
+                    phone: formattedPhone,
+                    is_group: false,
+                    last_message_at: new Date().toISOString()
+                })
+                .select()
+                .single();
+
+            if (convError) throw convError;
+            conversationId = newConv.id;
+        }
+
+        // 4. Create Ticket (Always create new OPEN ticket if none exists, or just ensure active)
+        // Requirement: Available to ALL agents -> agent_id = null
+
+        // Check if there's already an open ticket
+        const { data: activeTicket } = await supabase
+            .from('tickets')
+            .select('id')
+            .eq('conversation_id', conversationId)
+            .eq('status', 'open')
+            .single();
+
+        let ticketId = activeTicket?.id;
+
+        if (!activeTicket) {
+            const { data: newTicket, error: ticketError } = await supabase
+                .from('tickets')
+                .insert({
+                    conversation_id: conversationId,
+                    status: 'open',
+                    subject: reason, // Use reason as subject/initial context
+                    agent_id: null,  // IMPORTANT: Visible to all
+                    department_id: null // Can be triage
+                })
+                .select()
+                .single();
+
+            if (ticketError) throw ticketError;
+            ticketId = newTicket.id;
+            console.log(`[PUBLIC CONTACT] Created globally visible ticket #${ticketId} for ${name}`);
+        } else {
+            // Update subject of existing ticket?
+            console.log(`[PUBLIC CONTACT] Found existing active ticket #${ticketId}`);
+        }
+
+        // 5. Return WhatsApp Link
+        // Format: https://wa.me/PHONE?text=ENCODED_MESSAGE
+        // Message format: "Olá, sou [Nome]. [Motivo]"
+        const message = `Olá, sou ${name}. ${reason}`;
+
+        // Need bot number? No, link sends TO bot. But usually wa.me link is for USER to click and open chat with BOT.
+        // So we need BOT's phone number.
+        // Assuming client.info.wid exists if connected.
+        let botNumber = client?.info?.wid?.user; // without suffix
+
+        if (!botNumber) {
+            // Fallback if bot not connected or unknown?
+            // Maybe return just success and frontend handles generic link or shows "Wait for connection"
+            // But user wants "ante de abri a opção de mandar msg". So this opens the chat.
+            // If we don't know bot number, we can't generate wa.me link to BOT.
+            // Let's assume user knows bot number or we use a env var?
+            // Or we just return success and Frontend uses a fixed number if hardcoded? NO.
+            // Better: Try to get from client.info. If fail, log warning.
+            console.warn('[PUBLIC CONTACT] Bot number not available (client.info.wid). Link might fail.');
+        }
+
+        const waLink = `https://wa.me/${botNumber}?text=${encodeURIComponent(message)}`;
+
+        res.json({
+            success: true,
+            ticketId,
+            waLink,
+            botNumber
+        });
+
+    } catch (error) {
+        console.error('Error in public contact:', error);
+        res.status(500).json({ error: 'Erro ao processar contato' });
+    }
+});
+
 // Update conversation details (name, company, phone, priority)
 app.put('/api/conversations/:id/details', async (req, res) => {
     try {
