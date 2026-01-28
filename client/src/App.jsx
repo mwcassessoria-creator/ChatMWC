@@ -513,6 +513,29 @@ function App() {
                     }}
                 />
             )}
+
+            {/* QR Code Overlay */}
+            {status === 'qr_needed' && qrCode && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+                        <div className="mb-6">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-2">Conectar WhatsApp</h2>
+                            <p className="text-gray-600">Abra o WhatsApp no seu celular e escaneie o código abaixo para conectar o bot.</p>
+                        </div>
+
+                        <div className="bg-white p-4 rounded-xl shadow-inner border border-gray-100 inline-block mb-6">
+                            <QRCodeSVG value={qrCode} size={256} level="L" includeMargin={true} />
+                        </div>
+
+                        <div className="text-sm text-gray-500">
+                            <p>1. Abra o WhatsApp no seu celular</p>
+                            <p>2. Toque em Menu ou Configurações e selecione Aparelhos Conectados</p>
+                            <p>3. Toque em Conectar um Aparelho</p>
+                            <p>4. Aponte a câmera para esta tela</p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -105,15 +105,15 @@ const Login = ({ onLogin, onFirstLogin }) => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl notranslate"
                         >
                             {loading ? (
-                                'Entrando...'
+                                <span>Entrando...</span>
                             ) : (
-                                <>
+                                <span className="flex items-center gap-2">
                                     <LogIn size={20} />
-                                    Entrar
-                                </>
+                                    <span>Entrar</span>
+                                </span>
                             )}
                         </button>
                     </form>

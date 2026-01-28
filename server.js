@@ -287,6 +287,9 @@ async function saveMessageToSupabase(conversationId, msg, ticketId = null, agent
 
 client.on("message", async (msg) => {
     try {
+        // DEBUG: Log ALL incoming messages
+        console.log(`[DEBUG] Message received from: ${msg.from}, body: "${msg.body}", fromMe: ${msg.fromMe}`);
+
         // Prevent duplicate processing
         const messageId = msg.id._serialized;
         if (processedMessages.has(messageId)) {
@@ -302,9 +305,15 @@ client.on("message", async (msg) => {
             processedMessages.delete(messageId);
         }, MESSAGE_CACHE_TTL);
 
-        if (!msg.from || msg.from.endsWith("@g.us")) return;
+        if (!msg.from || msg.from.endsWith("@g.us")) {
+            console.log(`[DEBUG] Ignoring group message from: ${msg.from}`);
+            return;
+        }
         const chat = await msg.getChat();
-        if (chat.isGroup) return;
+        if (chat.isGroup) {
+            console.log(`[DEBUG] Ignoring group chat: ${chat.name}`);
+            return;
+        }
 
         // 1. Get or Create Conversation
         // 1. Unified Client & Conversation Logic
@@ -367,6 +376,7 @@ client.on("message", async (msg) => {
 
         // 2. Ensure Ticket Exists
         const ticket = await getOrCreateActiveTicket(conversation.id);
+        console.log(`[DEBUG] Ticket state: ID=${ticket?.id}, Status=${ticket?.status}, Dept=${ticket?.department_id}, Agent=${ticket?.agent_id}, Subject=${ticket?.subject}`);
 
         // Save incoming message (linked to ticket)
         await saveMessageToSupabase(conversation.id, msg, ticket?.id);
@@ -374,11 +384,13 @@ client.on("message", async (msg) => {
         // 3. Check assignments/department (Legacy logic adapted for tickets)
         // If ticket has agent_id, it is assigned.
         if (ticket && ticket.agent_id) {
+            console.log(`[DEBUG] Ticket assigned to agent ${ticket.agent_id}. Bot will not auto-reply.`);
             return; // Agent handles it
         }
 
         // 3.5 Check for waiting description state (Option 7 handling)
         if (ticket && ticket.subject === 'WAITING_DESCRIPTION') {
+            console.log(`[DEBUG] Ticket waiting for description.`);
             await chat.sendStateTyping();
 
             // Update ticket with description and clear waiting state
@@ -401,6 +413,8 @@ client.on("message", async (msg) => {
         const body = msg.body.trim();
         const menuOptions = ['Fiscal', 'Contábil', 'DP', 'Societário', 'Financeiro', 'Alvarás/Licenças', 'Outros'];
         const selection = parseInt(body);
+
+        console.log(`[DEBUG] Body="${body}", Selection=${selection}, IsNaN=${isNaN(selection)}`);
 
         if (!isNaN(selection) && selection >= 1 && selection <= 7) {
 
@@ -491,6 +505,7 @@ client.on("message", async (msg) => {
         // 5. Greeting / Menu (Only if no department assigned yet AND not waiting for description)
         // Note: WAITING_DESCRIPTION case is handled at top, so if we are here, we are just starting or invalid input
         if (!ticket.department_id) {
+            console.log(`[DEBUG] Sending menu (No department set)`);
             await chat.sendStateTyping();
             await new Promise(r => setTimeout(r, 1500));
 
@@ -514,6 +529,10 @@ client.on("message", async (msg) => {
                 `7. Outros`
             );
             await saveMessageToSupabase(conversation.id, sentMsg2, ticket.id);
+        } else {
+            console.log(`[DEBUG] Ticket already has department (${ticket.department_id}) and no agent. Ignoring message (waiting for queue pick up).`);
+            // OPTIONAL: Send a "You are still in queue" reminder?
+            // For now, just logging to confirm this is why it's silent.
         }
     } catch (error) {
         console.error("Error processing message:", error);
