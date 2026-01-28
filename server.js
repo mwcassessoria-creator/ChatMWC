@@ -377,12 +377,49 @@ client.on("message", async (msg) => {
             return; // Agent handles it
         }
 
+        // 3.5 Check for waiting description state (Option 7 handling)
+        if (ticket && ticket.subject === 'WAITING_DESCRIPTION') {
+            await chat.sendStateTyping();
+
+            // Update ticket with description and clear waiting state
+            // We keep department_id as NULL so it falls into General/Triage queue
+            await supabase
+                .from('tickets')
+                .update({
+                    subject: body,
+                    // department_id: null // Explicitly ensuring null (already is)
+                })
+                .eq('id', ticket.id);
+
+            const replyMsg = `✅ Recebido! Assunto: "${body}".\n\nSua solicitação foi encaminhada para nossa equipe e um atendente falará com você em breve.`;
+            const sentMsg = await client.sendMessage(msg.from, replyMsg);
+            await saveMessageToSupabase(conversation.id, sentMsg, ticket.id);
+            return;
+        }
+
         // 4. Department Selection Logic
         const body = msg.body.trim();
-        const menuOptions = ['Fiscal', 'Contábil', 'DP', 'Societário', 'Financeiro', 'Alvarás/Licenças'];
+        const menuOptions = ['Fiscal', 'Contábil', 'DP', 'Societário', 'Financeiro', 'Alvarás/Licenças', 'Outros'];
         const selection = parseInt(body);
 
-        if (!isNaN(selection) && selection >= 1 && selection <= 6) {
+        if (!isNaN(selection) && selection >= 1 && selection <= 7) {
+
+            // Special handling for Option 7 (Outros)
+            if (selection === 7) {
+                await chat.sendStateTyping();
+
+                // Set ticket to waiting state
+                await supabase
+                    .from('tickets')
+                    .update({ subject: 'WAITING_DESCRIPTION' })
+                    .eq('id', ticket.id);
+
+                const replyMsg = `Por favor, descreva em poucas palavras o assunto para direcionarmos seu atendimento. ✍️`;
+                const sentMsg = await client.sendMessage(msg.from, replyMsg);
+                await saveMessageToSupabase(conversation.id, sentMsg, ticket.id);
+                return;
+            }
+
             const selectedDeptName = menuOptions[selection - 1];
             const deptId = departmentsCache[selectedDeptName];
 
@@ -451,7 +488,8 @@ client.on("message", async (msg) => {
             }
         }
 
-        // 5. Greeting / Menu (Only if no department assigned yet)
+        // 5. Greeting / Menu (Only if no department assigned yet AND not waiting for description)
+        // Note: WAITING_DESCRIPTION case is handled at top, so if we are here, we are just starting or invalid input
         if (!ticket.department_id) {
             await chat.sendStateTyping();
             await new Promise(r => setTimeout(r, 1500));
@@ -472,7 +510,8 @@ client.on("message", async (msg) => {
                 `3. DP\n` +
                 `4. Societário\n` +
                 `5. Financeiro\n` +
-                `6. Alvarás/Licenças`
+                `6. Alvarás/Licenças\n` +
+                `7. Outros`
             );
             await saveMessageToSupabase(conversation.id, sentMsg2, ticket.id);
         }
@@ -894,6 +933,8 @@ app.get('/api/conversations/my-conversations', async (req, res) => {
         if (departmentIds.length > 0) {
             orFilter += `,and(agent_id.is.null,department_id.in.(${departmentIds.join(',')}),status.eq.open)`;
         }
+        // Include General/Unassigned Department tickets
+        orFilter += `,and(agent_id.is.null,department_id.is.null,status.eq.open)`;
 
         query = query.or(orFilter);
 
