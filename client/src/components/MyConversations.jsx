@@ -126,7 +126,7 @@ function MyConversations({ currentUser, onSelectConversation, socket, onUpdateSt
         <div className="w-full md:w-96 flex flex-col h-full bg-gray-50 border-r border-gray-200">{/* Changed from full width to fixed 384px */}
             {/* Header Clean */}
             <div className="bg-white px-6 pt-6 pb-2 sticky top-0 z-10">
-                <h2 className="text-3xl font-bold text-gray-900 mb-4 tracking-tight">Mensagens</h2>
+                <h2 className="text-3xl font-bold text-gray-900 mb-4 tracking-tight">Minhas Conversas</h2>
 
                 <div className="flex gap-3 mb-4">
                     <div className="flex-1 relative">
@@ -137,9 +137,36 @@ function MyConversations({ currentUser, onSelectConversation, socket, onUpdateSt
                             className="w-full pl-10 pr-4 py-2 bg-gray-100/80 border-none rounded-xl text-gray-800 placeholder-gray-500 font-medium outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
                         />
                     </div>
-                    <button className="text-blue-500 hover:bg-blue-50 p-2 rounded-lg transition-colors">
-                        <SlidersHorizontal size={22} strokeWidth={2.5} />
-                    </button>
+                </div>
+
+                {/* Status Filters */}
+                <div className="flex gap-2 pb-2 overflow-x-auto scrollbar-hide">
+                    {[
+                        { id: 'active', label: 'Em Andamento', count: activeCount, color: 'green' },
+                        { id: 'queued', label: 'Pendente', count: pendingCount, color: 'yellow' },
+                        { id: 'closed', label: 'Resolvidas', count: 0, color: 'gray' },
+                        { id: 'all', label: 'Todas', count: conversations.length, color: 'blue' }
+                    ].map(item => (
+                        <button
+                            key={item.id}
+                            onClick={() => setFilter(item.id)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 border ${filter === item.id
+                                    ? item.color === 'green' ? 'bg-green-500 border-green-500 text-white shadow-md shadow-green-200' :
+                                        item.color === 'yellow' ? 'bg-yellow-500 border-yellow-500 text-white shadow-md shadow-yellow-200' :
+                                            item.color === 'blue' ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200' :
+                                                'bg-gray-800 border-gray-800 text-white'
+                                    : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'
+                                }`}
+                        >
+                            {item.label}
+                            {item.count > 0 && item.id !== 'closed' && (
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${filter === item.id ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                                    }`}>
+                                    {item.count}
+                                </span>
+                            )}
+                        </button>
+                    ))}
                 </div>
             </div>
 
