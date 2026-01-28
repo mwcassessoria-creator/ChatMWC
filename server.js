@@ -602,11 +602,10 @@ app.get('/api/messages/:chatId', async (req, res) => {
                 return res.json(mappedMessages);
             }
 
-            // If conversation exists but no messages found (e.g. new ticket or empty ticket), return empty
-            return res.json([]);
+            console.log(`[API Messages] No messages found in DB for ${req.params.chatId}, trying WhatsApp fallback...`);
+            // Fallthrough to WA fetch
         }
 
-        // Fallback: fetch from WhatsApp Web.js
         // Fallback: fetch from WhatsApp Web.js
         try {
             const chat = await client.getChatById(req.params.chatId);
