@@ -557,6 +557,19 @@ app.get('/api/messages/:chatId', async (req, res) => {
 
                 if (activeTicket) {
                     targetTicketId = activeTicket.id;
+                } else {
+                    // Fallback: Get most recent ticket (closed) to show history
+                    const { data: lastTicket } = await supabase
+                        .from('tickets')
+                        .select('id')
+                        .eq('conversation_id', conversation.id)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .single();
+
+                    if (lastTicket) {
+                        targetTicketId = lastTicket.id;
+                    }
                 }
             }
 
